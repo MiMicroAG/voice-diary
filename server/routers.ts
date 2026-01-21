@@ -410,9 +410,10 @@ async function mergeWithExistingDiary(params: {
     });
   }
 
-  // Extract page URL from result
-  const urlMatch = result.match(/https:\/\/www\.notion\.so\/[a-f0-9]+/);
-  const pageUrl = urlMatch ? urlMatch[0] : "";
+  // Generate page URL from page ID
+  // Remove hyphens from page ID to create the Notion URL format
+  const pageIdWithoutHyphens = params.existingPageId.replace(/-/g, '');
+  const pageUrl = `https://www.notion.so/${pageIdWithoutHyphens}`;
   
   console.log('[mergeWithExistingDiary] Merge completed successfully');
   console.log('[mergeWithExistingDiary] Page URL:', pageUrl);
