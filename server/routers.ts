@@ -218,7 +218,7 @@ export const appRouter = router({
 /**
  * Find existing diary entry by date in Notion
  */
-async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; content: string; pageUrl: string } | null> {
+async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; content: string; pageUrl: string; existingTags: string[] } | null> {
   const { spawnSync } = await import('child_process');
   
   // Format date for search (YYYY/M/D format)
@@ -296,10 +296,25 @@ async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; co
     
     console.log(`[findExistingDiaryByDate] Successfully retrieved existing diary content (${pageData.text?.length || 0} chars)`);
     
+    // Extract existing tags from properties
+    let existingTags: string[] = [];
+    try {
+      const propsMatch = pageData.text.match(/<properties>([\s\S]*?)<\/properties>/);
+      if (propsMatch) {
+        const propsJson = JSON.parse(propsMatch[1]);
+        if (propsJson['タグ'] && Array.isArray(propsJson['タグ'])) {
+          existingTags = propsJson['タグ'];
+        }
+      }
+    } catch (e) {
+      console.error('[findExistingDiaryByDate] Failed to extract tags:', e);
+    }
+    
     return {
       pageId: exactMatch.id,
       content: pageData.text || "",
       pageUrl: exactMatch.url,
+      existingTags,
     };
   } catch (error) {
     console.error("Error finding existing diary:", error);
@@ -346,13 +361,21 @@ async function mergeWithExistingDiary(params: {
   
   console.log('[mergeWithExistingDiary] LLM merge completed, merged content length:', mergedContent.length);
 
-  // Update the existing Notion page's "本文" property
+  // Merge tags: combine existing tags with new tags (remove duplicates)
+  const existingTags = (params as any).existingTags || [];
+  const mergedTags = Array.from(new Set([...existingTags, ...params.tags]));
+  console.log('[mergeWithExistingDiary] Existing tags:', existingTags);
+  console.log('[mergeWithExistingDiary] New tags:', params.tags);
+  console.log('[mergeWithExistingDiary] Merged tags:', mergedTags);
+  
+  // Update the existing Notion page's "本文" property and tags
   const updateInput = {
     data: {
       page_id: params.existingPageId,
       command: "update_properties",
       properties: {
         "本文": mergedContent,
+        "タグ": mergedTags,
       },
     }
   };
@@ -441,7 +464,7 @@ async function extractMetadata(text: string): Promise<{
      → null
 
 2. タグ：
-   - タグは内容から推測し、["仕事", "プライベート", "健康", "学習", "趣味"]の中から選択
+   - タグは内容から推測し、["仕事", "プライベート", "健康", "学習", "趣味", "食事"]の中から選択
    - 複数のタグが当てはまる場合はすべて含める
 
 JSON形式で返してください：

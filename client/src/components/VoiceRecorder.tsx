@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const AVAILABLE_TAGS = ["仕事", "プライベート", "健康", "学習", "趣味"];
+const AVAILABLE_TAGS = ["仕事", "プライベート", "健康", "学習", "趣味", "食事"];
 
 interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob, tags: string[], duration: number) => void;
