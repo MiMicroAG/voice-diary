@@ -322,8 +322,17 @@ async function mergeWithExistingDiary(params: {
   const result = spawnResult.stdout || spawnResult.stderr || '';
   
   if (spawnResult.status !== 0) {
-    console.error('Failed to update Notion page:', result);
-    throw new Error(`Failed to update Notion page: ${result}`);
+    console.error('Failed to update Notion page (page may have been deleted):', result);
+    console.log('Falling back to creating a new page instead');
+    
+    // Fallback: create a new page if update fails (page might have been deleted)
+    const dateStr = `${params.date.getFullYear()}/${params.date.getMonth() + 1}/${params.date.getDate()}`;
+    return await saveToNotion({
+      title: `日記 ${dateStr}`,
+      content: mergedContent,
+      tags: params.tags,
+      date: params.date,
+    });
   }
 
   // Extract page URL from result
