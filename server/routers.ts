@@ -145,7 +145,11 @@ export const appRouter = router({
             });
           } else {
             // Create new entry
-            const dateStr = `${metadata.date.getFullYear()}/${metadata.date.getMonth() + 1}/${metadata.date.getDate()}`;
+            // Convert to JST to get the correct date components
+            const jstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+            const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
+            const [year, month, day] = jstDate.split('-');
+            const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
             const title = `日記 ${dateStr}`;
             console.log(`[processRecording] Creating new entry with title: ${title}, date: ${metadata.date.toISOString()}`);
             notionResult = await saveToNotion({
@@ -218,7 +222,11 @@ async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; co
   const { spawnSync } = await import('child_process');
   
   // Format date for search (YYYY/M/D format)
-  const dateStr = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+  // Convert to JST to get the correct date components
+  const jstDateStr = date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+  const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
+  const [year, month, day] = jstDate.split('-');
+  const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
   const searchQuery = `日記 ${dateStr}`;
   
   console.log(`[findExistingDiaryByDate] Searching for existing diary with date: ${dateStr}`);
@@ -366,7 +374,11 @@ async function mergeWithExistingDiary(params: {
     console.log('[mergeWithExistingDiary] Falling back to creating a new page instead');
     
     // Fallback: create a new page if update fails (page might have been deleted)
-    const dateStr = `${params.date.getFullYear()}/${params.date.getMonth() + 1}/${params.date.getDate()}`;
+    // Convert to JST to get the correct date components
+    const jstDateStr = params.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+    const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
+    const [year, month, day] = jstDate.split('-');
+    const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
     return await saveToNotion({
       title: `日記 ${dateStr}`,
       content: mergedContent,
