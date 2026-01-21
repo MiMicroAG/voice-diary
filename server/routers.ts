@@ -122,43 +122,20 @@ export const appRouter = router({
           // Format text into bullet points using LLM
           const formattedText = await formatTextToBulletPoints(transcribedText);
 
-          // Check if there's an existing diary entry for this date
-          console.log(`[processRecording] Checking for existing diary with date: ${metadata.date.toISOString()}`);
-          const existingEntry = await findExistingDiaryByDate(metadata.date);
-          console.log(`[processRecording] Existing entry found: ${existingEntry ? 'YES' : 'NO'}`);
-          
-          if (existingEntry) {
-            console.log(`[processRecording] Existing entry details: pageId=${existingEntry.pageId}, content length=${existingEntry.content.length}`);
-          }
-          
-          let notionResult: { pageId: string; pageUrl: string };
-          
-          if (existingEntry) {
-            // Merge with existing entry
-            console.log(`[processRecording] Merging with existing diary entry`);
-            notionResult = await mergeWithExistingDiary({
-              existingPageId: existingEntry.pageId,
-              existingContent: existingEntry.content,
-              newContent: formattedText,
-              tags: allTags,
-              date: metadata.date,
-            });
-          } else {
-            // Create new entry
-            // Convert to JST to get the correct date components
-            const jstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
-            const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
-            const [year, month, day] = jstDate.split('-');
-            const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
-            const title = `日記 ${dateStr}`;
-            console.log(`[processRecording] Creating new entry with title: ${title}, date: ${metadata.date.toISOString()}`);
-            notionResult = await saveToNotion({
-              title,
-              content: formattedText,
-              tags: allTags,
-              date: metadata.date,
-            });
-          }
+          // Always create a new entry (no merging)
+          // Convert to JST to get the correct date components
+          const jstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+          const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
+          const [year, month, day] = jstDate.split('-');
+          const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
+          const title = `日記 ${dateStr}`;
+          console.log(`[processRecording] Creating new entry with title: ${title}, date: ${metadata.date.toISOString()}`);
+          const notionResult = await saveToNotion({
+            title,
+            content: formattedText,
+            tags: allTags,
+            date: metadata.date,
+          });
 
           // Update recording with formatted transcription and Notion info
           await updateRecording(input.recordingId, {
@@ -214,212 +191,6 @@ export const appRouter = router({
       }),
   }),
 });
-
-/**
- * Find existing diary entry by date in Notion
- */
-async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; content: string; pageUrl: string; existingTags: string[] } | null> {
-  const { spawnSync } = await import('child_process');
-  
-  // Format date for search (YYYY/M/D format)
-  // Convert to JST to get the correct date components
-  const jstDateStr = date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
-  const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
-  const [year, month, day] = jstDate.split('-');
-  const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
-  const searchQuery = `日記 ${dateStr}`;
-  
-  console.log(`[findExistingDiaryByDate] Searching for existing diary with date: ${dateStr}`);
-  
-  try {
-    const searchInput = {
-      query: searchQuery,
-      query_type: "internal",
-      data_source_url: "collection://94518c78-84e5-4fb2-aea2-165124d31bf3",
-    };
-
-    const searchResult = spawnSync(
-      'manus-mcp-cli',
-      ['tool', 'call', 'search', '--server', 'notion', '--input', JSON.stringify(searchInput)],
-      { encoding: 'utf-8' }
-    );
-    
-    const result = searchResult.stdout || searchResult.stderr || '';
-    console.log(`[findExistingDiaryByDate] Search result length: ${result.length}`);
-
-    // Parse search results
-    const resultMatch = result.match(/Tool execution result:\s*({[\s\S]*})/);
-    if (!resultMatch) {
-      console.log(`[findExistingDiaryByDate] No result match found`);
-      return null;
-    }
-    
-    const searchResults = JSON.parse(resultMatch[1]);
-    console.log(`[findExistingDiaryByDate] Found ${searchResults.results?.length || 0} results`);
-    
-    if (!searchResults.results || searchResults.results.length === 0) {
-      console.log(`[findExistingDiaryByDate] No existing diary found for ${dateStr}`);
-      return null;
-    }
-
-    // Log all results for debugging
-    searchResults.results.forEach((r: any, i: number) => {
-      console.log(`[findExistingDiaryByDate] Result ${i}: title="${r.title}", id=${r.id}`);
-    });
-
-    // Find exact date match - check for exact title match
-    const exactMatch = searchResults.results.find((r: any) => 
-      r.title && r.title === `日記 ${dateStr}`
-    );
-
-    if (!exactMatch) {
-      console.log(`[findExistingDiaryByDate] No exact match found for "日記 ${dateStr}"`);
-      return null;
-    }
-    
-    console.log(`[findExistingDiaryByDate] Found exact match: ${exactMatch.title} (${exactMatch.id})`);
-
-    // Fetch the full page content
-    const fetchInput = { id: exactMatch.id };
-    const fetchSpawn = spawnSync(
-      'manus-mcp-cli',
-      ['tool', 'call', 'fetch', '--server', 'notion', '--input', JSON.stringify(fetchInput)],
-      { encoding: 'utf-8' }
-    );
-    
-    const fetchResult = fetchSpawn.stdout || fetchSpawn.stderr || '';
-
-    const fetchMatch = fetchResult.match(/Tool execution result:\s*({[\s\S]*})/);
-    if (!fetchMatch) return null;
-
-    const pageData = JSON.parse(fetchMatch[1]);
-    
-    console.log(`[findExistingDiaryByDate] Successfully retrieved existing diary content (${pageData.text?.length || 0} chars)`);
-    
-    // Extract existing tags from properties
-    let existingTags: string[] = [];
-    try {
-      const propsMatch = pageData.text.match(/<properties>([\s\S]*?)<\/properties>/);
-      if (propsMatch) {
-        const propsJson = JSON.parse(propsMatch[1]);
-        if (propsJson['タグ'] && Array.isArray(propsJson['タグ'])) {
-          existingTags = propsJson['タグ'];
-        }
-      }
-    } catch (e) {
-      console.error('[findExistingDiaryByDate] Failed to extract tags:', e);
-    }
-    
-    return {
-      pageId: exactMatch.id,
-      content: pageData.text || "",
-      pageUrl: exactMatch.url,
-      existingTags,
-    };
-  } catch (error) {
-    console.error("Error finding existing diary:", error);
-    return null;
-  }
-}
-
-/**
- * Merge new content with existing diary entry
- */
-async function mergeWithExistingDiary(params: {
-  existingPageId: string;
-  existingContent: string;
-  newContent: string;
-  tags: string[];
-  date: Date;
-}): Promise<{ pageId: string; pageUrl: string }> {
-  console.log('[mergeWithExistingDiary] Starting merge process');
-  console.log('[mergeWithExistingDiary] Page ID:', params.existingPageId);
-  console.log('[mergeWithExistingDiary] Existing content length:', params.existingContent.length);
-  console.log('[mergeWithExistingDiary] New content length:', params.newContent.length);
-  
-  const { spawnSync } = await import('child_process');
-  
-  // Use LLM to merge contents intelligently
-  const { invokeLLM } = await import('./_core/llm');
-  
-  const mergeResponse = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content: "あなたは日記の統合を手伝うアシスタントです。既存の日記に新しい内容を追加してください。重要：既存の内容を削除したり省略したりせず、全て保持してください。新しい内容は既存の内容の後に追加し、重複する場合のみ統合してください。ヘッダー、タイトル、日付、タグ、「統合された日記」などのメタ情報やヘッダーは一切含めず、日記の内容のみを返してください。"
-      },
-      {
-        role: "user",
-        content: `以下の既存の日記に、新しい内容を追加してください。重要：既存の内容を全て保持し、削除しないでください。メタ情報（タイトル、日付、タグ、ヘッダーなど）は一切含めず、日記の内容のみを返してください：\n\n既存の内容（全て保持）：\n${params.existingContent}\n\n新しい内容（追加）：\n${params.newContent}`
-      }
-    ],
-  });
-
-  const mergedContent = typeof mergeResponse.choices[0]?.message?.content === 'string' 
-    ? mergeResponse.choices[0].message.content 
-    : `${params.existingContent}\n\n${params.newContent}`;
-  
-  console.log('[mergeWithExistingDiary] LLM merge completed, merged content length:', mergedContent.length);
-
-  // Merge tags: combine existing tags with new tags (remove duplicates)
-  const existingTags = (params as any).existingTags || [];
-  const mergedTags = Array.from(new Set([...existingTags, ...params.tags]));
-  console.log('[mergeWithExistingDiary] Existing tags:', existingTags);
-  console.log('[mergeWithExistingDiary] New tags:', params.tags);
-  console.log('[mergeWithExistingDiary] Merged tags:', mergedTags);
-  
-  // Update the existing Notion page's "本文" property and tags
-  const updateInput = {
-    data: {
-      page_id: params.existingPageId,
-      command: "update_properties",
-      properties: {
-        "本文": mergedContent,
-        "タグ": JSON.stringify(mergedTags),
-      },
-    }
-  };
-
-  console.log('[mergeWithExistingDiary] Calling Notion update API...');
-  
-  const spawnResult = spawnSync(
-    'manus-mcp-cli',
-    ['tool', 'call', 'notion-update-page', '--server', 'notion', '--input', JSON.stringify(updateInput)],
-    { encoding: 'utf-8' }
-  );
-
-  const result = spawnResult.stdout || spawnResult.stderr || '';
-  console.log('[mergeWithExistingDiary] Notion API response status:', spawnResult.status);
-  console.log('[mergeWithExistingDiary] Notion API response:', result.substring(0, 500));
-  
-  if (spawnResult.status !== 0) {
-    console.error('[mergeWithExistingDiary] Failed to update Notion page (page may have been deleted):', result);
-    console.log('[mergeWithExistingDiary] Falling back to creating a new page instead');
-    
-    // Fallback: create a new page if update fails (page might have been deleted)
-    // Convert to JST to get the correct date components
-    const jstDateStr = params.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
-    const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
-    const [year, month, day] = jstDate.split('-');
-    const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
-    return await saveToNotion({
-      title: `日記 ${dateStr}`,
-      content: mergedContent,
-      tags: params.tags,
-      date: params.date,
-    });
-  }
-
-  // Generate page URL from page ID
-  // Remove hyphens from page ID to create the Notion URL format
-  const pageIdWithoutHyphens = params.existingPageId.replace(/-/g, '');
-  const pageUrl = `https://www.notion.so/${pageIdWithoutHyphens}`;
-  
-  console.log('[mergeWithExistingDiary] Merge completed successfully');
-  console.log('[mergeWithExistingDiary] Page URL:', pageUrl);
-
-  return { pageId: params.existingPageId, pageUrl };
-}
 
 /**
  * Extract date and tags from transcribed text using LLM
