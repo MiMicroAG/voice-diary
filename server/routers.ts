@@ -338,12 +338,14 @@ async function mergeWithExistingDiary(params: {
   
   console.log('[mergeWithExistingDiary] LLM merge completed, merged content length:', mergedContent.length);
 
-  // Update the existing Notion page using replace_content command
+  // Update the existing Notion page's "本文" property
   const updateInput = {
     data: {
       page_id: params.existingPageId,
-      command: "replace_content",
-      new_str: mergedContent,
+      command: "update_properties",
+      properties: {
+        "本文": mergedContent,
+      },
     }
   };
 
