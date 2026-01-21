@@ -346,11 +346,11 @@ async function mergeWithExistingDiary(params: {
     messages: [
       {
         role: "system",
-        content: "あなたは日記の統合を手伝うアシスタントです。既存の日記と新しい内容を自然に統合してください。重複する内容は統合し、異なる内容は両方を保持してください。ヘッダー、タイトル、日付、タグ、「統合された日記」などのメタ情報やヘッダーは一切含めず、日記の内容のみを返してください。"
+        content: "あなたは日記の統合を手伝うアシスタントです。既存の日記に新しい内容を追加してください。重要：既存の内容を削除したり省略したりせず、全て保持してください。新しい内容は既存の内容の後に追加し、重複する場合のみ統合してください。ヘッダー、タイトル、日付、タグ、「統合された日記」などのメタ情報やヘッダーは一切含めず、日記の内容のみを返してください。"
       },
       {
         role: "user",
-        content: `以下の2つの日記内容を統合してください。メタ情報（タイトル、日付、タグ、ヘッダーなど）は一切含めず、日記の内容のみを返してください：\n\n既存の内容：\n${params.existingContent}\n\n新しい内容：\n${params.newContent}`
+        content: `以下の既存の日記に、新しい内容を追加してください。重要：既存の内容を全て保持し、削除しないでください。メタ情報（タイトル、日付、タグ、ヘッダーなど）は一切含めず、日記の内容のみを返してください：\n\n既存の内容（全て保持）：\n${params.existingContent}\n\n新しい内容（追加）：\n${params.newContent}`
       }
     ],
   });
@@ -688,10 +688,34 @@ async function saveToNotion(params: {
     throw new Error(`Failed to create Notion page: ${result}`);
   }
   
-  // Parse result to extract page ID and URL
-  const urlMatch = result.match(/https:\/\/www\.notion\.so\/[a-f0-9]+/);
-  const pageUrl = urlMatch ? urlMatch[0] : "";
-  const pageId = pageUrl.split('/').pop() || "";
+  // Parse result to extract page ID
+  console.log('[saveToNotion] Notion API response:', result);
+  
+  // Extract page id from JSON response (notion-create-pages returns {pages:[{id:...}]})
+  let pageId = "";
+  try {
+    const jsonMatch = result.match(/\{"pages":\[\{[^\]]+\}\]\}/);
+    if (jsonMatch) {
+      const jsonObj = JSON.parse(jsonMatch[0]);
+      if (jsonObj.pages && jsonObj.pages.length > 0) {
+        pageId = jsonObj.pages[0].id;
+      }
+    }
+  } catch (e) {
+    console.error('[saveToNotion] Failed to parse page id from response:', e);
+    console.error('[saveToNotion] Response:', result);
+  }
+  
+  if (!pageId) {
+    throw new Error('Failed to extract page_id from Notion response');
+  }
+  
+  // Generate page URL from page ID
+  const pageIdWithoutHyphens = pageId.replace(/-/g, '');
+  const pageUrl = `https://www.notion.so/${pageIdWithoutHyphens}`;
+  
+  console.log('[saveToNotion] Successfully created page:', pageId);
+  console.log('[saveToNotion] Page URL:', pageUrl);
 
   return { pageId, pageUrl };
 }
