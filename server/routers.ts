@@ -111,16 +111,40 @@ export const appRouter = router({
 
           const transcribedText = transcription.text;
 
+          // Extract metadata (date and tags) from transcribed text
+          const metadata = await extractMetadata(transcribedText);
+          
+          // Merge user-selected tags with AI-extracted tags
+          const userTags = recording.tags ? JSON.parse(recording.tags) : [];
+          const combinedTags = [...userTags, ...metadata.tags];
+          const allTags = Array.from(new Set(combinedTags));
+
           // Format text into bullet points using LLM
           const formattedText = await formatTextToBulletPoints(transcribedText);
 
-          // Save to Notion
-          const notionResult = await saveToNotion({
-            title: `日記 ${new Date().toLocaleDateString('ja-JP')}`,
-            content: formattedText,
-            tags: recording.tags ? JSON.parse(recording.tags) : [],
-            date: new Date(),
-          });
+          // Check if there's an existing diary entry for this date
+          const existingEntry = await findExistingDiaryByDate(metadata.date);
+          
+          let notionResult: { pageId: string; pageUrl: string };
+          
+          if (existingEntry) {
+            // Merge with existing entry
+            notionResult = await mergeWithExistingDiary({
+              existingPageId: existingEntry.pageId,
+              existingContent: existingEntry.content,
+              newContent: formattedText,
+              tags: allTags,
+              date: metadata.date,
+            });
+          } else {
+            // Create new entry
+            notionResult = await saveToNotion({
+              title: `日記 ${metadata.date.toLocaleDateString('ja-JP')}`,
+              content: formattedText,
+              tags: allTags,
+              date: metadata.date,
+            });
+          }
 
           // Update recording with formatted transcription and Notion info
           await updateRecording(input.recordingId, {
@@ -176,6 +200,183 @@ export const appRouter = router({
       }),
   }),
 });
+
+/**
+ * Find existing diary entry by date in Notion
+ */
+async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; content: string; pageUrl: string } | null> {
+  const { execSync } = await import('child_process');
+  
+  const dateStr = date.toLocaleDateString('ja-JP');
+  const searchQuery = `日記 ${dateStr}`;
+  
+  try {
+    const searchInput = {
+      query: searchQuery,
+      query_type: "internal",
+      data_source_url: "collection://94518c78-84e5-4fb2-aea2-165124d31bf3",
+    };
+
+    const result = execSync(
+      `manus-mcp-cli tool call search --server notion --input '${JSON.stringify(searchInput)}'`,
+      { encoding: 'utf-8' }
+    );
+
+    // Parse search results
+    const resultMatch = result.match(/Tool execution result:\s*({[\s\S]*})/);
+    if (!resultMatch) return null;
+    
+    const searchResults = JSON.parse(resultMatch[1]);
+    if (!searchResults.results || searchResults.results.length === 0) return null;
+
+    // Find exact date match
+    const exactMatch = searchResults.results.find((r: any) => 
+      r.title && r.title.includes(dateStr)
+    );
+
+    if (!exactMatch) return null;
+
+    // Fetch the full page content
+    const fetchInput = { id: exactMatch.id };
+    const fetchResult = execSync(
+      `manus-mcp-cli tool call fetch --server notion --input '${JSON.stringify(fetchInput)}'`,
+      { encoding: 'utf-8' }
+    );
+
+    const fetchMatch = fetchResult.match(/Tool execution result:\s*({[\s\S]*})/);
+    if (!fetchMatch) return null;
+
+    const pageData = JSON.parse(fetchMatch[1]);
+    
+    return {
+      pageId: exactMatch.id,
+      content: pageData.text || "",
+      pageUrl: exactMatch.url,
+    };
+  } catch (error) {
+    console.error("Error finding existing diary:", error);
+    return null;
+  }
+}
+
+/**
+ * Merge new content with existing diary entry
+ */
+async function mergeWithExistingDiary(params: {
+  existingPageId: string;
+  existingContent: string;
+  newContent: string;
+  tags: string[];
+  date: Date;
+}): Promise<{ pageId: string; pageUrl: string }> {
+  const { execSync } = await import('child_process');
+  
+  // Use LLM to merge contents intelligently
+  const { invokeLLM } = await import('./_core/llm');
+  
+  const mergeResponse = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content: "あなたは日記の統合を手伝うアシスタントです。既存の日記と新しい内容を自然に統合してください。重複する内容は統合し、異なる内容は両方を保持してください。"
+      },
+      {
+        role: "user",
+        content: `以下の2つの日記内容を統合してください：\n\n既存の内容：\n${params.existingContent}\n\n新しい内容：\n${params.newContent}`
+      }
+    ],
+  });
+
+  const mergedContent = typeof mergeResponse.choices[0]?.message?.content === 'string' 
+    ? mergeResponse.choices[0].message.content 
+    : `${params.existingContent}\n\n${params.newContent}`;
+
+  // Update the existing Notion page
+  const updateInput = {
+    page_id: params.existingPageId,
+    updates: {
+      properties: {
+        "本文": mergedContent,
+        "タグ": JSON.stringify(params.tags),
+      }
+    }
+  };
+
+  const result = execSync(
+    `manus-mcp-cli tool call notion-update-page --server notion --input '${JSON.stringify(updateInput)}'`,
+    { encoding: 'utf-8' }
+  );
+
+  // Extract page URL from result
+  const urlMatch = result.match(/https:\/\/www\.notion\.so\/[a-f0-9]+/);
+  const pageUrl = urlMatch ? urlMatch[0] : "";
+
+  return { pageId: params.existingPageId, pageUrl };
+}
+
+/**
+ * Extract date and tags from transcribed text using LLM
+ */
+async function extractMetadata(text: string): Promise<{
+  date: Date;
+  tags: string[];
+}> {
+  const { invokeLLM } = await import('./_core/llm');
+  
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content: "あなたは日記のメタデータを抽出するアシスタントです。テキストから日付とタグを抽出してJSON形式で返してください。"
+      },
+      {
+        role: "user",
+        content: `以下のテキストから日付とタグを抽出してください。
+
+テキスト: ${text}
+
+以下のルールに従ってください：
+1. 日付が明示的に言及されている場合はその日付を使用し、ない場合は今日の日付を使用
+2. タグは内容から推測し、["仕事", "プライベート", "健康", "学習", "趣味"]の中から選択
+3. 複数のタグが当てはまる場合はすべて含める
+
+JSON形式で返してください：
+{
+  "date": "YYYY-MM-DD",
+  "tags": ["tag1", "tag2"]
+}`
+      }
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "diary_metadata",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            date: { type: "string", description: "Date in YYYY-MM-DD format" },
+            tags: { 
+              type: "array", 
+              items: { type: "string" },
+              description: "Array of tags"
+            },
+          },
+          required: ["date", "tags"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  const content = response.choices[0]?.message?.content;
+  const parsed = typeof content === 'string' ? JSON.parse(content) : { date: new Date().toISOString().split('T')[0], tags: [] };
+  
+  return {
+    date: new Date(parsed.date),
+    tags: parsed.tags,
+  };
+}
 
 /**
  * Format transcribed text into structured bullet points using LLM
