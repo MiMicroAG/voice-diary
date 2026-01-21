@@ -210,14 +210,11 @@ export const appRouter = router({
 async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; content: string; pageUrl: string } | null> {
   const { spawnSync } = await import('child_process');
   
-  // Validate date
-  if (!date || isNaN(date.getTime())) {
-    console.error("Invalid date provided to findExistingDiaryByDate");
-    return null;
-  }
-  
+  // Format date for search (YYYY/M/D format)
   const dateStr = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
   const searchQuery = `日記 ${dateStr}`;
+  
+  console.log(`[findExistingDiaryByDate] Searching for existing diary with date: ${dateStr}`);
   
   try {
     const searchInput = {
@@ -233,20 +230,39 @@ async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; co
     );
     
     const result = searchResult.stdout || searchResult.stderr || '';
+    console.log(`[findExistingDiaryByDate] Search result length: ${result.length}`);
 
     // Parse search results
     const resultMatch = result.match(/Tool execution result:\s*({[\s\S]*})/);
-    if (!resultMatch) return null;
+    if (!resultMatch) {
+      console.log(`[findExistingDiaryByDate] No result match found`);
+      return null;
+    }
     
     const searchResults = JSON.parse(resultMatch[1]);
-    if (!searchResults.results || searchResults.results.length === 0) return null;
+    console.log(`[findExistingDiaryByDate] Found ${searchResults.results?.length || 0} results`);
+    
+    if (!searchResults.results || searchResults.results.length === 0) {
+      console.log(`[findExistingDiaryByDate] No existing diary found for ${dateStr}`);
+      return null;
+    }
 
-    // Find exact date match
+    // Log all results for debugging
+    searchResults.results.forEach((r: any, i: number) => {
+      console.log(`[findExistingDiaryByDate] Result ${i}: title="${r.title}", id=${r.id}`);
+    });
+
+    // Find exact date match - check for exact title match
     const exactMatch = searchResults.results.find((r: any) => 
-      r.title && r.title.includes(dateStr)
+      r.title && r.title === `日記 ${dateStr}`
     );
 
-    if (!exactMatch) return null;
+    if (!exactMatch) {
+      console.log(`[findExistingDiaryByDate] No exact match found for "日記 ${dateStr}"`);
+      return null;
+    }
+    
+    console.log(`[findExistingDiaryByDate] Found exact match: ${exactMatch.title} (${exactMatch.id})`);
 
     // Fetch the full page content
     const fetchInput = { id: exactMatch.id };
@@ -262,6 +278,8 @@ async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; co
     if (!fetchMatch) return null;
 
     const pageData = JSON.parse(fetchMatch[1]);
+    
+    console.log(`[findExistingDiaryByDate] Successfully retrieved existing diary content (${pageData.text?.length || 0} chars)`);
     
     return {
       pageId: exactMatch.id,
