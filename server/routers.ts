@@ -342,49 +342,88 @@ async function extractMetadata(text: string): Promise<{
 }> {
   const { invokeLLM } = await import('./_core/llm');
   
-  // Always use current date/time for simplicity and accuracy
   const currentDate = new Date();
-  console.log(`[extractMetadata] Using current date: ${currentDate.toISOString()}`);
+  const currentDateStr = currentDate.toISOString().split('T')[0];
   
-  // Only extract tags from LLM
+  // Extract date interpretation and tags from LLM
   const response = await invokeLLM({
     messages: [
       {
         role: "system",
-        content: "あなたは日記のタグを抽出するアシスタントです。テキストの内容から適切なタグを選択してJSON形式で返してください。"
+        content: `あなたは日記のメタデータを抽出するアシスタントです。テキストから日付の言及とタグを抽出してJSON形式で返してください。現在の日付は${currentDateStr}です。`
       },
       {
         role: "user",
-        content: `以下のテキストからタグを抽出してください。
+        content: `以下のテキストから日付の言及とタグを抽出してください。
 
 テキスト: ${text}
 
 以下のルールに従ってください：
-1. タグは内容から推測し、["仕事", "プライベート", "健康", "学習", "趣味"]の中から選択
-2. 複数のタグが当てはまる場合はすべて含める
-3. 適切なタグがない場合は空配列を返す
+
+1. 日付の解釈：
+   - テキスト中に日付の言及があるかを判定
+   - 日付の言及がある場合：
+     a) 具体的な日付（例：「2026年1月20日」「1月20日」）
+        → {"type": "specific", "date": "YYYY-MM-DD"}
+     b) 相対的な日付（例：「昨日」「3日前」「先週の金曜日」）
+        → {"type": "relative", "days": -1} （負の数は過去、正の数は未来）
+   - 日付の言及がない場合：
+     → null
+
+2. タグ：
+   - タグは内容から推測し、["仕事", "プライベート", "健康", "学習", "趣味"]の中から選択
+   - 複数のタグが当てはまる場合はすべて含める
 
 JSON形式で返してください：
 {
+  "dateInfo": {"type": "specific", "date": "YYYY-MM-DD"} or {"type": "relative", "days": -1} or null,
   "tags": ["tag1", "tag2"]
-}`
+}
+
+例：
+- "昨日は仕事で大変だった" → {"dateInfo": {"type": "relative", "days": -1}, "tags": ["仕事"]}
+- "1月20日に病院に行った" → {"dateInfo": {"type": "specific", "date": "2026-01-20"}, "tags": ["健康"]}
+- "今日はジムに行った" → {"dateInfo": null, "tags": ["健康", "趣味"]}`
       }
     ],
     response_format: {
       type: "json_schema",
       json_schema: {
-        name: "diary_tags",
+        name: "diary_metadata",
         strict: true,
         schema: {
           type: "object",
           properties: {
+            dateInfo: {
+              anyOf: [
+                {
+                  type: "object",
+                  properties: {
+                    type: { type: "string", enum: ["specific"] },
+                    date: { type: "string", description: "Date in YYYY-MM-DD format" }
+                  },
+                  required: ["type", "date"],
+                  additionalProperties: false
+                },
+                {
+                  type: "object",
+                  properties: {
+                    type: { type: "string", enum: ["relative"] },
+                    days: { type: "integer", description: "Number of days relative to today (negative for past, positive for future)" }
+                  },
+                  required: ["type", "days"],
+                  additionalProperties: false
+                },
+                { type: "null" }
+              ]
+            },
             tags: { 
               type: "array", 
               items: { type: "string" },
               description: "Array of tags"
             },
           },
-          required: ["tags"],
+          required: ["dateInfo", "tags"],
           additionalProperties: false,
         },
       },
@@ -392,19 +431,68 @@ JSON形式で返してください：
   });
 
   const content = response.choices[0]?.message?.content;
-  let parsed: { tags: string[] };
+  let parsed: { 
+    dateInfo: { type: "specific"; date: string } | { type: "relative"; days: number } | null; 
+    tags: string[] 
+  };
   
   try {
-    parsed = typeof content === 'string' ? JSON.parse(content) : { tags: [] };
+    parsed = typeof content === 'string' ? JSON.parse(content) : { dateInfo: null, tags: [] };
   } catch (error) {
-    console.error("Failed to parse tags:", error);
-    parsed = { tags: [] };
+    console.error("Failed to parse metadata:", error);
+    parsed = { dateInfo: null, tags: [] };
   }
   
-  console.log(`[extractMetadata] Extracted tags: ${JSON.stringify(parsed.tags)}`);
+  // Calculate final date based on LLM interpretation
+  let finalDate: Date = currentDate;
+  
+  if (parsed.dateInfo) {
+    if (parsed.dateInfo.type === "specific") {
+      // Specific date provided
+      try {
+        const extractedDate = new Date(parsed.dateInfo.date);
+        
+        if (!isNaN(extractedDate.getTime())) {
+          // Define acceptable date range: 1 year in the past to 1 week in the future
+          const oneYearAgo = new Date(currentDate);
+          oneYearAgo.setFullYear(currentDate.getFullYear() - 1);
+          
+          const oneWeekLater = new Date(currentDate);
+          oneWeekLater.setDate(currentDate.getDate() + 7);
+          
+          if (extractedDate >= oneYearAgo && extractedDate <= oneWeekLater) {
+            finalDate = extractedDate;
+            console.log(`[extractMetadata] Using specific date: ${extractedDate.toISOString()}`);
+          } else {
+            console.warn(`[extractMetadata] Specific date ${parsed.dateInfo.date} is out of range, using current date`);
+          }
+        } else {
+          console.warn(`[extractMetadata] Invalid specific date: ${parsed.dateInfo.date}, using current date`);
+        }
+      } catch (error) {
+        console.error("Failed to parse specific date:", error);
+      }
+    } else if (parsed.dateInfo.type === "relative") {
+      // Relative date provided - calculate from current date
+      const days = parsed.dateInfo.days;
+      
+      // Validate relative days range (-365 to +7)
+      if (days >= -365 && days <= 7) {
+        finalDate = new Date(currentDate);
+        finalDate.setDate(currentDate.getDate() + days);
+        console.log(`[extractMetadata] Using relative date: ${days} days from today = ${finalDate.toISOString()}`);
+      } else {
+        console.warn(`[extractMetadata] Relative days ${days} is out of range, using current date`);
+      }
+    }
+  } else {
+    console.log(`[extractMetadata] No date mentioned, using current date: ${currentDate.toISOString()}`);
+  }
+  
+  console.log(`[extractMetadata] Final date: ${finalDate.toISOString()}, tags: ${JSON.stringify(parsed.tags)}`);
   
   return {
-    date: currentDate,
+    date: finalDate,
     tags: Array.isArray(parsed.tags) ? parsed.tags : [],
   };
 }
