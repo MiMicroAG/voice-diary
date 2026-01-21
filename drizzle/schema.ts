@@ -25,4 +25,24 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Voice recordings table to track audio files and their processing status
+ */
+export const recordings = mysqlTable("recordings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  audioFileKey: varchar("audioFileKey", { length: 512 }).notNull(),
+  audioUrl: text("audioUrl").notNull(),
+  duration: int("duration"), // Duration in seconds
+  status: mysqlEnum("status", ["uploading", "processing", "completed", "failed"]).default("uploading").notNull(),
+  transcribedText: text("transcribedText"),
+  notionPageId: varchar("notionPageId", { length: 128 }),
+  notionPageUrl: text("notionPageUrl"),
+  tags: text("tags"), // JSON array of selected tags
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Recording = typeof recordings.$inferSelect;
+export type InsertRecording = typeof recordings.$inferInsert;
