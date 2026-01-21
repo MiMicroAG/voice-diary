@@ -309,6 +309,11 @@ async function mergeWithExistingDiary(params: {
   tags: string[];
   date: Date;
 }): Promise<{ pageId: string; pageUrl: string }> {
+  console.log('[mergeWithExistingDiary] Starting merge process');
+  console.log('[mergeWithExistingDiary] Page ID:', params.existingPageId);
+  console.log('[mergeWithExistingDiary] Existing content length:', params.existingContent.length);
+  console.log('[mergeWithExistingDiary] New content length:', params.newContent.length);
+  
   const { spawnSync } = await import('child_process');
   
   // Use LLM to merge contents intelligently
@@ -330,6 +335,8 @@ async function mergeWithExistingDiary(params: {
   const mergedContent = typeof mergeResponse.choices[0]?.message?.content === 'string' 
     ? mergeResponse.choices[0].message.content 
     : `${params.existingContent}\n\n${params.newContent}`;
+  
+  console.log('[mergeWithExistingDiary] LLM merge completed, merged content length:', mergedContent.length);
 
   // Update the existing Notion page using replace_content command
   const updateInput = {
@@ -340,6 +347,8 @@ async function mergeWithExistingDiary(params: {
     }
   };
 
+  console.log('[mergeWithExistingDiary] Calling Notion update API...');
+  
   const spawnResult = spawnSync(
     'manus-mcp-cli',
     ['tool', 'call', 'notion-update-page', '--server', 'notion', '--input', JSON.stringify(updateInput)],
@@ -347,10 +356,12 @@ async function mergeWithExistingDiary(params: {
   );
 
   const result = spawnResult.stdout || spawnResult.stderr || '';
+  console.log('[mergeWithExistingDiary] Notion API response status:', spawnResult.status);
+  console.log('[mergeWithExistingDiary] Notion API response:', result.substring(0, 500));
   
   if (spawnResult.status !== 0) {
-    console.error('Failed to update Notion page (page may have been deleted):', result);
-    console.log('Falling back to creating a new page instead');
+    console.error('[mergeWithExistingDiary] Failed to update Notion page (page may have been deleted):', result);
+    console.log('[mergeWithExistingDiary] Falling back to creating a new page instead');
     
     // Fallback: create a new page if update fails (page might have been deleted)
     const dateStr = `${params.date.getFullYear()}/${params.date.getMonth() + 1}/${params.date.getDate()}`;
@@ -365,6 +376,9 @@ async function mergeWithExistingDiary(params: {
   // Extract page URL from result
   const urlMatch = result.match(/https:\/\/www\.notion\.so\/[a-f0-9]+/);
   const pageUrl = urlMatch ? urlMatch[0] : "";
+  
+  console.log('[mergeWithExistingDiary] Merge completed successfully');
+  console.log('[mergeWithExistingDiary] Page URL:', pageUrl);
 
   return { pageId: params.existingPageId, pageUrl };
 }
@@ -378,7 +392,10 @@ async function extractMetadata(text: string): Promise<{
 }> {
   const { invokeLLM } = await import('./_core/llm');
   
-  const currentDate = new Date();
+  // Get current date in JST (UTC+9)
+  const now = new Date();
+  const jstOffset = 9 * 60; // JST is UTC+9
+  const currentDate = new Date(now.getTime() + jstOffset * 60 * 1000);
   const currentDateStr = currentDate.toISOString().split('T')[0];
   
   // Extract date interpretation and tags from LLM
@@ -486,7 +503,8 @@ JSON形式で返してください：
     if (parsed.dateInfo.type === "specific") {
       // Specific date provided
       try {
-        const extractedDate = new Date(parsed.dateInfo.date);
+        // Parse date as JST (add time component to ensure correct date)
+        const extractedDate = new Date(parsed.dateInfo.date + 'T00:00:00+09:00');
         
         if (!isNaN(extractedDate.getTime())) {
           // Define acceptable date range: 1 year in the past to 1 week in the future
@@ -509,7 +527,7 @@ JSON形式で返してください：
         console.error("Failed to parse specific date:", error);
       }
     } else if (parsed.dateInfo.type === "relative") {
-      // Relative date provided - calculate from current date
+      // Relative date provided - calculate from current date in JST
       const days = parsed.dateInfo.days;
       
       // Validate relative days range (-365 to +7)
