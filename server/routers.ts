@@ -139,8 +139,10 @@ export const appRouter = router({
           } else {
             // Create new entry
             const dateStr = `${metadata.date.getFullYear()}/${metadata.date.getMonth() + 1}/${metadata.date.getDate()}`;
+            const title = `日記 ${dateStr}`;
+            console.log(`[processRecording] Creating new entry with title: ${title}, date: ${metadata.date.toISOString()}`);
             notionResult = await saveToNotion({
-              title: `日記 ${dateStr}`,
+              title,
               content: formattedText,
               tags: allTags,
               date: metadata.date,
@@ -340,26 +342,30 @@ async function extractMetadata(text: string): Promise<{
 }> {
   const { invokeLLM } = await import('./_core/llm');
   
+  // Always use current date/time for simplicity and accuracy
+  const currentDate = new Date();
+  console.log(`[extractMetadata] Using current date: ${currentDate.toISOString()}`);
+  
+  // Only extract tags from LLM
   const response = await invokeLLM({
     messages: [
       {
         role: "system",
-        content: "あなたは日記のメタデータを抽出するアシスタントです。テキストから日付とタグを抽出してJSON形式で返してください。"
+        content: "あなたは日記のタグを抽出するアシスタントです。テキストの内容から適切なタグを選択してJSON形式で返してください。"
       },
       {
         role: "user",
-        content: `以下のテキストから日付とタグを抽出してください。
+        content: `以下のテキストからタグを抽出してください。
 
 テキスト: ${text}
 
 以下のルールに従ってください：
-1. 日付が明示的に言及されている場合はその日付を使用し、ない場合は今日の日付を使用
-2. タグは内容から推測し、["仕事", "プライベート", "健康", "学習", "趣味"]の中から選択
-3. 複数のタグが当てはまる場合はすべて含める
+1. タグは内容から推測し、["仕事", "プライベート", "健康", "学習", "趣味"]の中から選択
+2. 複数のタグが当てはまる場合はすべて含める
+3. 適切なタグがない場合は空配列を返す
 
 JSON形式で返してください：
 {
-  "date": "YYYY-MM-DD",
   "tags": ["tag1", "tag2"]
 }`
       }
@@ -367,19 +373,18 @@ JSON形式で返してください：
     response_format: {
       type: "json_schema",
       json_schema: {
-        name: "diary_metadata",
+        name: "diary_tags",
         strict: true,
         schema: {
           type: "object",
           properties: {
-            date: { type: "string", description: "Date in YYYY-MM-DD format" },
             tags: { 
               type: "array", 
               items: { type: "string" },
               description: "Array of tags"
             },
           },
-          required: ["date", "tags"],
+          required: ["tags"],
           additionalProperties: false,
         },
       },
@@ -387,31 +392,19 @@ JSON形式で返してください：
   });
 
   const content = response.choices[0]?.message?.content;
-  let parsed: { date: string; tags: string[] };
+  let parsed: { tags: string[] };
   
   try {
-    parsed = typeof content === 'string' ? JSON.parse(content) : { date: new Date().toISOString().split('T')[0], tags: [] };
+    parsed = typeof content === 'string' ? JSON.parse(content) : { tags: [] };
   } catch (error) {
-    console.error("Failed to parse metadata:", error);
-    parsed = { date: new Date().toISOString().split('T')[0], tags: [] };
+    console.error("Failed to parse tags:", error);
+    parsed = { tags: [] };
   }
   
-  // Validate and parse date
-  let parsedDate: Date;
-  try {
-    parsedDate = new Date(parsed.date);
-    // Check if date is valid
-    if (isNaN(parsedDate.getTime())) {
-      console.warn(`Invalid date from LLM: ${parsed.date}, using today`);
-      parsedDate = new Date();
-    }
-  } catch (error) {
-    console.error("Failed to parse date:", error);
-    parsedDate = new Date();
-  }
+  console.log(`[extractMetadata] Extracted tags: ${JSON.stringify(parsed.tags)}`);
   
   return {
-    date: parsedDate,
+    date: currentDate,
     tags: Array.isArray(parsed.tags) ? parsed.tags : [],
   };
 }
@@ -455,6 +448,8 @@ async function saveToNotion(params: {
     console.error("Invalid date provided to saveToNotion, using current date");
     params.date = new Date();
   }
+  
+  console.log(`[saveToNotion] Saving with title: ${params.title}, date: ${params.date.toISOString()}`);
   
   const notionInput = {
     parent: {
