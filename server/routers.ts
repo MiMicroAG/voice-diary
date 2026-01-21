@@ -207,6 +207,12 @@ export const appRouter = router({
 async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; content: string; pageUrl: string } | null> {
   const { execSync } = await import('child_process');
   
+  // Validate date
+  if (!date || isNaN(date.getTime())) {
+    console.error("Invalid date provided to findExistingDiaryByDate");
+    return null;
+  }
+  
   const dateStr = date.toLocaleDateString('ja-JP');
   const searchQuery = `日記 ${dateStr}`;
   
@@ -370,11 +376,32 @@ JSON形式で返してください：
   });
 
   const content = response.choices[0]?.message?.content;
-  const parsed = typeof content === 'string' ? JSON.parse(content) : { date: new Date().toISOString().split('T')[0], tags: [] };
+  let parsed: { date: string; tags: string[] };
+  
+  try {
+    parsed = typeof content === 'string' ? JSON.parse(content) : { date: new Date().toISOString().split('T')[0], tags: [] };
+  } catch (error) {
+    console.error("Failed to parse metadata:", error);
+    parsed = { date: new Date().toISOString().split('T')[0], tags: [] };
+  }
+  
+  // Validate and parse date
+  let parsedDate: Date;
+  try {
+    parsedDate = new Date(parsed.date);
+    // Check if date is valid
+    if (isNaN(parsedDate.getTime())) {
+      console.warn(`Invalid date from LLM: ${parsed.date}, using today`);
+      parsedDate = new Date();
+    }
+  } catch (error) {
+    console.error("Failed to parse date:", error);
+    parsedDate = new Date();
+  }
   
   return {
-    date: new Date(parsed.date),
-    tags: parsed.tags,
+    date: parsedDate,
+    tags: Array.isArray(parsed.tags) ? parsed.tags : [],
   };
 }
 
@@ -411,6 +438,12 @@ async function saveToNotion(params: {
   date: Date;
 }): Promise<{ pageId: string; pageUrl: string }> {
   const { execSync } = await import('child_process');
+  
+  // Validate date
+  if (!params.date || isNaN(params.date.getTime())) {
+    console.error("Invalid date provided to saveToNotion, using current date");
+    params.date = new Date();
+  }
   
   const notionInput = {
     parent: {
