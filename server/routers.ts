@@ -138,8 +138,9 @@ export const appRouter = router({
             });
           } else {
             // Create new entry
+            const dateStr = `${metadata.date.getFullYear()}/${metadata.date.getMonth() + 1}/${metadata.date.getDate()}`;
             notionResult = await saveToNotion({
-              title: `日記 ${metadata.date.toLocaleDateString('ja-JP')}`,
+              title: `日記 ${dateStr}`,
               content: formattedText,
               tags: allTags,
               date: metadata.date,
@@ -213,7 +214,7 @@ async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; co
     return null;
   }
   
-  const dateStr = date.toLocaleDateString('ja-JP');
+  const dateStr = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
   const searchQuery = `日記 ${dateStr}`;
   
   try {
@@ -290,11 +291,11 @@ async function mergeWithExistingDiary(params: {
     messages: [
       {
         role: "system",
-        content: "あなたは日記の統合を手伝うアシスタントです。既存の日記と新しい内容を自然に統合してください。重複する内容は統合し、異なる内容は両方を保持してください。"
+        content: "あなたは日記の統合を手伝うアシスタントです。既存の日記と新しい内容を自然に統合してください。重複する内容は統合し、異なる内容は両方を保持してください。ヘッダー、タイトル、日付、タグ、「統合された日記」などのメタ情報やヘッダーは一切含めず、日記の内容のみを返してください。"
       },
       {
         role: "user",
-        content: `以下の2つの日記内容を統合してください：\n\n既存の内容：\n${params.existingContent}\n\n新しい内容：\n${params.newContent}`
+        content: `以下の2つの日記内容を統合してください。メタ情報（タイトル、日付、タグ、ヘッダーなど）は一切含めず、日記の内容のみを返してください：\n\n既存の内容：\n${params.existingContent}\n\n新しい内容：\n${params.newContent}`
       }
     ],
   });
@@ -425,11 +426,11 @@ async function formatTextToBulletPoints(text: string): Promise<string> {
     messages: [
       {
         role: "system",
-        content: "あなたは日記の整理を手伝うアシスタントです。ユーザーが音声で入力した内容を、読みやすい箇条書き形式に整理してください。重要なポイントを抽出し、論理的な順序で並べてください。元の意味を変えずに、簡潔で分かりやすい箇条書きにしてください。"
+        content: "あなたは日記の内容を箇条書き形式に整理するアシスタントです。重要なポイントを抽出し、簡潔に箇条書き形式で返してください。ヘッダー、タイトル、日付、タグなどのメタ情報は一切含めず、日記の内容のみを返してください。"
       },
       {
         role: "user",
-        content: `以下の音声入力テキストを箇条書き形式に整理してください：\n\n${text}`
+        content: `以下の音声入力テキストを箇条書き形式に整理してください。メタ情報（タイトル、日付、タグなど）は一切含めず、日記の内容のみを返してください：\n\n${text}`
       }
     ],
   });
