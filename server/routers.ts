@@ -205,7 +205,7 @@ export const appRouter = router({
  * Find existing diary entry by date in Notion
  */
 async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; content: string; pageUrl: string } | null> {
-  const { execSync } = await import('child_process');
+  const { spawnSync } = await import('child_process');
   
   // Validate date
   if (!date || isNaN(date.getTime())) {
@@ -223,10 +223,13 @@ async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; co
       data_source_url: "collection://94518c78-84e5-4fb2-aea2-165124d31bf3",
     };
 
-    const result = execSync(
-      `manus-mcp-cli tool call search --server notion --input '${JSON.stringify(searchInput)}'`,
+    const searchResult = spawnSync(
+      'manus-mcp-cli',
+      ['tool', 'call', 'search', '--server', 'notion', '--input', JSON.stringify(searchInput)],
       { encoding: 'utf-8' }
     );
+    
+    const result = searchResult.stdout || searchResult.stderr || '';
 
     // Parse search results
     const resultMatch = result.match(/Tool execution result:\s*({[\s\S]*})/);
@@ -244,10 +247,13 @@ async function findExistingDiaryByDate(date: Date): Promise<{ pageId: string; co
 
     // Fetch the full page content
     const fetchInput = { id: exactMatch.id };
-    const fetchResult = execSync(
-      `manus-mcp-cli tool call fetch --server notion --input '${JSON.stringify(fetchInput)}'`,
+    const fetchSpawn = spawnSync(
+      'manus-mcp-cli',
+      ['tool', 'call', 'fetch', '--server', 'notion', '--input', JSON.stringify(fetchInput)],
       { encoding: 'utf-8' }
     );
+    
+    const fetchResult = fetchSpawn.stdout || fetchSpawn.stderr || '';
 
     const fetchMatch = fetchResult.match(/Tool execution result:\s*({[\s\S]*})/);
     if (!fetchMatch) return null;
@@ -275,7 +281,7 @@ async function mergeWithExistingDiary(params: {
   tags: string[];
   date: Date;
 }): Promise<{ pageId: string; pageUrl: string }> {
-  const { execSync } = await import('child_process');
+  const { spawnSync } = await import('child_process');
   
   // Use LLM to merge contents intelligently
   const { invokeLLM } = await import('./_core/llm');
@@ -297,20 +303,25 @@ async function mergeWithExistingDiary(params: {
     ? mergeResponse.choices[0].message.content 
     : `${params.existingContent}\n\n${params.newContent}`;
 
-  // Update the existing Notion page
+  // Update the existing Notion page using replace_content command
   const updateInput = {
     page_id: params.existingPageId,
-    command: "update_properties",
-    properties: {
-      "本文": mergedContent,
-      "タグ": JSON.stringify(params.tags),
-    }
+    command: "replace_content",
+    new_str: mergedContent,
   };
 
-  const result = execSync(
-    `manus-mcp-cli tool call notion-update-page --server notion --input '${JSON.stringify(updateInput).replace(/'/g, "'\\''")}' 2>&1`,
+  const spawnResult = spawnSync(
+    'manus-mcp-cli',
+    ['tool', 'call', 'notion-update-page', '--server', 'notion', '--input', JSON.stringify(updateInput)],
     { encoding: 'utf-8' }
   );
+
+  const result = spawnResult.stdout || spawnResult.stderr || '';
+  
+  if (spawnResult.status !== 0) {
+    console.error('Failed to update Notion page:', result);
+    throw new Error(`Failed to update Notion page: ${result}`);
+  }
 
   // Extract page URL from result
   const urlMatch = result.match(/https:\/\/www\.notion\.so\/[a-f0-9]+/);
@@ -436,7 +447,7 @@ async function saveToNotion(params: {
   tags: string[];
   date: Date;
 }): Promise<{ pageId: string; pageUrl: string }> {
-  const { execSync } = await import('child_process');
+  const { spawnSync } = await import('child_process');
   
   // Validate date
   if (!params.date || isNaN(params.date.getTime())) {
@@ -448,23 +459,33 @@ async function saveToNotion(params: {
     parent: {
       data_source_id: "94518c78-84e5-4fb2-aea2-165124d31bf3"
     },
-    pages: [{
-      properties: {
-        "タイトル": params.title,
-        "本文": params.content,
-        "タグ": JSON.stringify(params.tags),
-        "date:日付:start": params.date.toISOString(),
-        "date:日付:is_datetime": 1,
+    pages: [
+      {
+        properties: {
+          "タイトル": params.title,
+          "本文": params.content,
+          "タグ": JSON.stringify(params.tags),
+          "date:日付:start": params.date.toISOString(),
+          "date:日付:is_datetime": 1,
+        }
       }
-    }]
+    ]
   };
 
-  const result = execSync(
-    `manus-mcp-cli tool call notion-create-pages --server notion --input '${JSON.stringify(notionInput)}'`,
+  const spawnResult = spawnSync(
+    'manus-mcp-cli',
+    ['tool', 'call', 'notion-create-pages', '--server', 'notion', '--input', JSON.stringify(notionInput)],
     { encoding: 'utf-8' }
   );
-
-  // Parse the result to extract page ID and URL
+  
+  const result = spawnResult.stdout || spawnResult.stderr || '';
+  
+  if (spawnResult.status !== 0) {
+    console.error('Failed to create Notion page:', result);
+    throw new Error(`Failed to create Notion page: ${result}`);
+  }
+  
+  // Parse result to extract page ID and URL
   const urlMatch = result.match(/https:\/\/www\.notion\.so\/[a-f0-9]+/);
   const pageUrl = urlMatch ? urlMatch[0] : "";
   const pageId = pageUrl.split('/').pop() || "";
