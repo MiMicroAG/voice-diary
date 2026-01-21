@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, status, errorMessage, transcribedText, createdAt FROM recordings WHERE status = 'failed' ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4QxsGrujg4ZXseJ.root --database NnaWYzKeqY3HPdPh2AcsoE --execute SELECT id, status, errorMessage, transcribedText, createdAt FROM recordings WHERE status = 'failed' ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "528",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 17:19:37"
+    },
+    {
+      "id": "527",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 17:14:36"
+    },
+    {
+      "id": "526",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 17:10:13"
+    },
+    {
+      "id": "524",
+      "status": "failed",
+      "errorMessage": "Failed to extract page_id from Notion response",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 17:00:12"
+    },
+    {
+      "id": "523",
+      "status": "failed",
+      "errorMessage": "Failed to extract page_id from Notion response",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 16:55:19"
+    },
+    {
+      "id": "499",
+      "status": "failed",
+      "errorMessage": "Failed to extract page_id from Notion response",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 16:36:23"
+    },
+    {
+      "id": "498",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 16:35:48"
+    },
+    {
+      "id": "497",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 16:32:29"
+    },
+    {
+      "id": "476",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 16:29:03"
+    },
+    {
+      "id": "475",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "transcribedText": "NULL",
+      "createdAt": "2026-01-21 16:27:36"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\terrorMessage\ttranscribedText\tcreatedAt\n528\tfailed\tFailed to create Notion page: \tNULL\t2026-01-21 17:19:37\n527\tfailed\tFailed to create Notion page: \tNULL\t2026-01-21 17:14:36\n526\tfailed\tFailed to create Notion page: \tNULL\t2026-01-21 17:10:13\n524\tfailed\tFailed to extract page_id from Notion response\tNULL\t2026-01-21 17:00:12\n523\tfailed\tFailed to extract page_id from Notion response\tNULL\t2026-01-21 16:55:19\n499\tfailed\tFailed to extract page_id from Notion response\tNULL\t2026-01-21 16:36:23\n498\tfailed\tFailed to create Notion page: \tNULL\t2026-01-21 16:35:48\n497\tfailed\tFailed to create Notion page: \tNULL\t2026-01-21 16:32:29\n476\tfailed\tFailed to create Notion page: \tNULL\t2026-01-21 16:29:03\n475\tfailed\tFailed to create Notion page: \tNULL\t2026-01-21 16:27:36\n",
+  "stderr": "",
+  "execution_time_ms": 1509
+}

@@ -1,0 +1,100 @@
+{
+  "query": "SELECT id, userId, duration, status, errorMessage, createdAt, updatedAt FROM recordings WHERE status = 'failed' ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4QxsGrujg4ZXseJ.root --database NnaWYzKeqY3HPdPh2AcsoE --execute SELECT id, userId, duration, status, errorMessage, createdAt, updatedAt FROM recordings WHERE status = 'failed' ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "534",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:39:05",
+      "updatedAt": "2026-01-21 17:39:17"
+    },
+    {
+      "id": "533",
+      "userId": "651",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:35:05",
+      "updatedAt": "2026-01-21 17:35:16"
+    },
+    {
+      "id": "532",
+      "userId": "651",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:32:04",
+      "updatedAt": "2026-01-21 17:32:15"
+    },
+    {
+      "id": "531",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:27:46",
+      "updatedAt": "2026-01-21 17:27:57"
+    },
+    {
+      "id": "530",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:25:30",
+      "updatedAt": "2026-01-21 17:25:40"
+    },
+    {
+      "id": "529",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:22:49",
+      "updatedAt": "2026-01-21 17:23:00"
+    },
+    {
+      "id": "528",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:19:37",
+      "updatedAt": "2026-01-21 17:19:46"
+    },
+    {
+      "id": "527",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:14:36",
+      "updatedAt": "2026-01-21 17:14:46"
+    },
+    {
+      "id": "526",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:10:13",
+      "updatedAt": "2026-01-21 17:10:22"
+    },
+    {
+      "id": "524",
+      "userId": "1",
+      "duration": "0",
+      "status": "failed",
+      "errorMessage": "Failed to extract page_id from Notion response",
+      "createdAt": "2026-01-21 17:00:12",
+      "updatedAt": "2026-01-21 17:00:33"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tduration\tstatus\terrorMessage\tcreatedAt\tupdatedAt\n534\t1\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:39:05\t2026-01-21 17:39:17\n533\t651\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:35:05\t2026-01-21 17:35:16\n532\t651\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:32:04\t2026-01-21 17:32:15\n531\t1\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:27:46\t2026-01-21 17:27:57\n530\t1\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:25:30\t2026-01-21 17:25:40\n529\t1\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:22:49\t2026-01-21 17:23:00\n528\t1\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:19:37\t2026-01-21 17:19:46\n527\t1\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:14:36\t2026-01-21 17:14:46\n526\t1\t0\tfailed\tFailed to create Notion page: \t2026-01-21 17:10:13\t2026-01-21 17:10:22\n524\t1\t0\tfailed\tFailed to extract page_id from Notion response\t2026-01-21 17:00:12\t2026-01-21 17:00:33\n",
+  "stderr": "",
+  "execution_time_ms": 1523
+}

@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, status, errorMessage, createdAt, updatedAt FROM recordings ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4QxsGrujg4ZXseJ.root --database NnaWYzKeqY3HPdPh2AcsoE --execute SELECT id, status, errorMessage, createdAt, updatedAt FROM recordings ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "528",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:19:37",
+      "updatedAt": "2026-01-21 17:19:46"
+    },
+    {
+      "id": "527",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:14:36",
+      "updatedAt": "2026-01-21 17:14:46"
+    },
+    {
+      "id": "526",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-21 17:10:13",
+      "updatedAt": "2026-01-21 17:10:22"
+    },
+    {
+      "id": "525",
+      "status": "completed",
+      "errorMessage": "NULL",
+      "createdAt": "2026-01-21 17:03:25",
+      "updatedAt": "2026-01-21 17:03:44"
+    },
+    {
+      "id": "524",
+      "status": "failed",
+      "errorMessage": "Failed to extract page_id from Notion response",
+      "createdAt": "2026-01-21 17:00:12",
+      "updatedAt": "2026-01-21 17:00:33"
+    },
+    {
+      "id": "523",
+      "status": "failed",
+      "errorMessage": "Failed to extract page_id from Notion response",
+      "createdAt": "2026-01-21 16:55:19",
+      "updatedAt": "2026-01-21 16:55:39"
+    },
+    {
+      "id": "522",
+      "status": "completed",
+      "errorMessage": "NULL",
+      "createdAt": "2026-01-21 16:48:56",
+      "updatedAt": "2026-01-21 16:49:25"
+    },
+    {
+      "id": "521",
+      "status": "completed",
+      "errorMessage": "NULL",
+      "createdAt": "2026-01-21 16:40:20",
+      "updatedAt": "2026-01-21 16:40:49"
+    },
+    {
+      "id": "520",
+      "status": "completed",
+      "errorMessage": "NULL",
+      "createdAt": "2026-01-21 16:39:18",
+      "updatedAt": "2026-01-21 16:39:49"
+    },
+    {
+      "id": "519",
+      "status": "completed",
+      "errorMessage": "NULL",
+      "createdAt": "2026-01-21 16:38:08",
+      "updatedAt": "2026-01-21 16:38:08"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\terrorMessage\tcreatedAt\tupdatedAt\n528\tfailed\tFailed to create Notion page: \t2026-01-21 17:19:37\t2026-01-21 17:19:46\n527\tfailed\tFailed to create Notion page: \t2026-01-21 17:14:36\t2026-01-21 17:14:46\n526\tfailed\tFailed to create Notion page: \t2026-01-21 17:10:13\t2026-01-21 17:10:22\n525\tcompleted\tNULL\t2026-01-21 17:03:25\t2026-01-21 17:03:44\n524\tfailed\tFailed to extract page_id from Notion response\t2026-01-21 17:00:12\t2026-01-21 17:00:33\n523\tfailed\tFailed to extract page_id from Notion response\t2026-01-21 16:55:19\t2026-01-21 16:55:39\n522\tcompleted\tNULL\t2026-01-21 16:48:56\t2026-01-21 16:49:25\n521\tcompleted\tNULL\t2026-01-21 16:40:20\t2026-01-21 16:40:49\n520\tcompleted\tNULL\t2026-01-21 16:39:18\t2026-01-21 16:39:49\n519\tcompleted\tNULL\t2026-01-21 16:38:08\t2026-01-21 16:38:08\n",
+  "stderr": "",
+  "execution_time_ms": 1721
+}

@@ -12,6 +12,7 @@ interface DiaryEntry {
   notionPageUrl: string | null;
   createdAt: Date;
   duration: number | null;
+  errorMessage: string | null;
 }
 
 interface DiaryEntriesProps {
@@ -91,12 +92,17 @@ export function DiaryEntries({ entries }: DiaryEntriesProps) {
 
             {/* Status indicator */}
             {entry.status !== "completed" && (
-              <div className="text-sm text-muted-foreground">
-                <Badge variant="outline">
+              <div className="space-y-2">
+                <Badge variant="outline" className="text-sm">
                   {entry.status === "processing" && "処理中..."}
                   {entry.status === "uploading" && "アップロード中..."}
                   {entry.status === "failed" && "失敗"}
                 </Badge>
+                {entry.status === "failed" && entry.errorMessage && (
+                  <p className="text-xs text-destructive">
+                    エラー: {entry.errorMessage}
+                  </p>
+                )}
               </div>
             )}
           </div>

@@ -455,37 +455,57 @@ async function saveToNotion(params: {
   
   const result = spawnResult.stdout || spawnResult.stderr || '';
   
+  console.log('[saveToNotion] manus-mcp-cli output:', result);
+  
   if (spawnResult.status !== 0) {
-    console.error('Failed to create Notion page:', result);
+    console.error('[saveToNotion] manus-mcp-cli failed with status:', spawnResult.status);
+    console.error('[saveToNotion] Error output:', result);
     throw new Error(`Failed to create Notion page: ${result}`);
   }
   
-  // Parse result to extract page ID
-  console.log('[saveToNotion] Notion API response:', result);
+  // Extract JSON file path from output
+  // The output format is: "Tool execution result saved to: /path/to/file.json"
+  const filePathMatch = result.match(/Tool execution result saved to: (.+\.json)/);
+  if (!filePathMatch) {
+    console.error('[saveToNotion] Failed to extract JSON file path from output');
+    console.error('[saveToNotion] Output:', result);
+    throw new Error('Failed to extract JSON file path from manus-mcp-cli output');
+  }
   
-  // Extract page id from JSON response (notion-create-pages returns {pages:[{id:...}]})
+  const jsonFilePath = filePathMatch[1].trim();
+  console.log('[saveToNotion] Reading JSON file:', jsonFilePath);
+  
+  // Read JSON file
   let pageId = "";
+  let pageUrl = "";
   try {
-    // Extract JSON from "Tool execution result:" line
-    const resultMatch = result.match(/Tool execution result:\s*({[\s\S]*})/);
-    if (resultMatch) {
-      const jsonObj = JSON.parse(resultMatch[1]);
-      if (jsonObj.pages && jsonObj.pages.length > 0) {
-        pageId = jsonObj.pages[0].id;
-      }
+    const fs = await import('fs');
+    const fileContent = fs.readFileSync(jsonFilePath, 'utf-8');
+    const jsonObj = JSON.parse(fileContent);
+    
+    console.log('[saveToNotion] Parsed JSON:', JSON.stringify(jsonObj, null, 2));
+    
+    if (jsonObj.pages && jsonObj.pages.length > 0) {
+      pageId = jsonObj.pages[0].id;
+      pageUrl = jsonObj.pages[0].url || '';
+    } else {
+      console.error('[saveToNotion] No pages found in JSON response');
+      throw new Error('No pages found in Notion response');
     }
   } catch (e) {
-    console.error('[saveToNotion] Failed to parse page id from response:', e);
-    console.error('[saveToNotion] Response:', result);
+    console.error('[saveToNotion] Failed to read or parse JSON file:', e);
+    throw new Error(`Failed to read Notion response file: ${e instanceof Error ? e.message : String(e)}`);
   }
   
   if (!pageId) {
     throw new Error('Failed to extract page_id from Notion response');
   }
   
-  // Generate page URL from page ID
-  const pageIdWithoutHyphens = pageId.replace(/-/g, '');
-  const pageUrl = `https://www.notion.so/${pageIdWithoutHyphens}`;
+  // Use pageUrl from JSON response, or generate from page ID if not available
+  if (!pageUrl) {
+    const pageIdWithoutHyphens = pageId.replace(/-/g, '');
+    pageUrl = `https://www.notion.so/${pageIdWithoutHyphens}`;
+  }
   
   console.log('[saveToNotion] Successfully created page:', pageId);
   console.log('[saveToNotion] Page URL:', pageUrl);
