@@ -579,17 +579,37 @@ async function formatTextToBulletPoints(text: string): Promise<string> {
     messages: [
       {
         role: "system",
-        content: "あなたは日記の内容を箇条書き形式に整理するアシスタントです。重要なポイントを抽出し、簡潔に箇条書き形式で返してください。ヘッダー、タイトル、日付、タグなどのメタ情報は一切含めず、日記の内容のみを返してください。"
+        content: "あなたは日記の内容を箱条書き形式に整理するアシスタントです。重要なポイントを抽出し、各項目を「* 」で始まる箱条書き形式で返してください。"
       },
       {
         role: "user",
-        content: `以下の音声入力テキストを箇条書き形式に整理してください。メタ情報（タイトル、日付、タグなど）は一切含めず、日記の内容のみを返してください：\n\n${text}`
+        content: `以下の音声入力テキストを箱条書き形式に整理してください。
+
+重要なルール：
+1. 各項目は必ず「* 」で始める
+2. 1行に1つの項目を書く
+3. メタ情報（タイトル、日付、タグ、「箱条書き」という言葉など）は一切含めない
+4. 日記の内容のみを箱条書きで返す
+
+例：
+入力：「今日は会社に行って、会議に参加しました。その後、銀行に立ち寄って振り込みをしました。」
+出力：
+* 会社に行って会議に参加した
+* 銀行に立ち寄って振り込みをした
+
+音声入力テキスト：
+${text}`
       }
     ],
   });
 
   const content = response.choices[0]?.message?.content;
-  return typeof content === 'string' ? content : text;
+  const formattedContent = typeof content === 'string' ? content.trim() : text;
+  
+  console.log(`[formatTextToBulletPoints] Input length: ${text.length}, Output length: ${formattedContent.length}`);
+  console.log(`[formatTextToBulletPoints] Output preview: ${formattedContent.substring(0, 200)}`);
+  
+  return formattedContent;
 }
 
 /**
