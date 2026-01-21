@@ -193,7 +193,7 @@ async function saveToNotion(params: {
       properties: {
         "タイトル": params.title,
         "本文": params.content,
-        "タグ": params.tags,
+        "タグ": JSON.stringify(params.tags),
         "date:日付:start": params.date.toISOString(),
         "date:日付:is_datetime": 1,
       }
