@@ -375,7 +375,7 @@ async function mergeWithExistingDiary(params: {
       command: "update_properties",
       properties: {
         "本文": mergedContent,
-        "タグ": mergedTags,
+        "タグ": JSON.stringify(mergedTags),
       },
     }
   };
