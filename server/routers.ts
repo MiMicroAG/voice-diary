@@ -123,12 +123,19 @@ export const appRouter = router({
           const formattedText = await formatTextToBulletPoints(transcribedText);
 
           // Check if there's an existing diary entry for this date
+          console.log(`[processRecording] Checking for existing diary with date: ${metadata.date.toISOString()}`);
           const existingEntry = await findExistingDiaryByDate(metadata.date);
+          console.log(`[processRecording] Existing entry found: ${existingEntry ? 'YES' : 'NO'}`);
+          
+          if (existingEntry) {
+            console.log(`[processRecording] Existing entry details: pageId=${existingEntry.pageId}, content length=${existingEntry.content.length}`);
+          }
           
           let notionResult: { pageId: string; pageUrl: string };
           
           if (existingEntry) {
             // Merge with existing entry
+            console.log(`[processRecording] Merging with existing diary entry`);
             notionResult = await mergeWithExistingDiary({
               existingPageId: existingEntry.pageId,
               existingContent: existingEntry.content,
@@ -326,9 +333,11 @@ async function mergeWithExistingDiary(params: {
 
   // Update the existing Notion page using replace_content command
   const updateInput = {
-    page_id: params.existingPageId,
-    command: "replace_content",
-    new_str: mergedContent,
+    data: {
+      page_id: params.existingPageId,
+      command: "replace_content",
+      new_str: mergedContent,
+    }
   };
 
   const spawnResult = spawnSync(
