@@ -395,10 +395,13 @@ async function extractMetadata(text: string): Promise<{
   const { invokeLLM } = await import('./_core/llm');
   
   // Get current date in JST (UTC+9)
+  // Use toLocaleString to get JST date components correctly
   const now = new Date();
-  const jstOffset = 9 * 60; // JST is UTC+9
-  const currentDate = new Date(now.getTime() + jstOffset * 60 * 1000);
-  const currentDateStr = currentDate.toISOString().split('T')[0];
+  const jstDateStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' }); // 'sv-SE' gives YYYY-MM-DD HH:MM:SS format
+  const currentDateStr = jstDateStr.split(' ')[0]; // Extract YYYY-MM-DD
+  
+  // Create a Date object representing midnight JST for the current day
+  const currentDate = new Date(currentDateStr + 'T00:00:00+09:00');
   
   // Extract date interpretation and tags from LLM
   const response = await invokeLLM({
@@ -534,9 +537,10 @@ JSON形式で返してください：
       
       // Validate relative days range (-365 to +7)
       if (days >= -365 && days <= 7) {
-        finalDate = new Date(currentDate);
-        finalDate.setDate(currentDate.getDate() + days);
-        console.log(`[extractMetadata] Using relative date: ${days} days from today = ${finalDate.toISOString()}`);
+        // Calculate the target date by adding/subtracting days
+        const targetTimestamp = currentDate.getTime() + (days * 24 * 60 * 60 * 1000);
+        finalDate = new Date(targetTimestamp);
+        console.log(`[extractMetadata] Using relative date: ${days} days from ${currentDateStr} = ${finalDate.toISOString()}`);
       } else {
         console.warn(`[extractMetadata] Relative days ${days} is out of range, using current date`);
       }
