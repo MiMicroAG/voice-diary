@@ -44,3 +44,6 @@
 
 ## バグ修正2
 - [x] 日付解析エラーの修正（Invalid time value）
+
+## バグ修正3
+- [x] Notion更新API（notion-update-page）の引数形式を修正

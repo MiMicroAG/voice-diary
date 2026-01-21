@@ -300,16 +300,15 @@ async function mergeWithExistingDiary(params: {
   // Update the existing Notion page
   const updateInput = {
     page_id: params.existingPageId,
-    updates: {
-      properties: {
-        "本文": mergedContent,
-        "タグ": JSON.stringify(params.tags),
-      }
+    command: "update_properties",
+    properties: {
+      "本文": mergedContent,
+      "タグ": JSON.stringify(params.tags),
     }
   };
 
   const result = execSync(
-    `manus-mcp-cli tool call notion-update-page --server notion --input '${JSON.stringify(updateInput)}'`,
+    `manus-mcp-cli tool call notion-update-page --server notion --input '${JSON.stringify(updateInput).replace(/'/g, "'\\''")}' 2>&1`,
     { encoding: 'utf-8' }
   );
 
