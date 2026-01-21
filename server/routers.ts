@@ -111,17 +111,20 @@ export const appRouter = router({
 
           const transcribedText = transcription.text;
 
+          // Format text into bullet points using LLM
+          const formattedText = await formatTextToBulletPoints(transcribedText);
+
           // Save to Notion
           const notionResult = await saveToNotion({
             title: `日記 ${new Date().toLocaleDateString('ja-JP')}`,
-            content: transcribedText,
+            content: formattedText,
             tags: recording.tags ? JSON.parse(recording.tags) : [],
             date: new Date(),
           });
 
-          // Update recording with transcription and Notion info
+          // Update recording with formatted transcription and Notion info
           await updateRecording(input.recordingId, {
-            transcribedText,
+            transcribedText: formattedText,
             notionPageId: notionResult.pageId,
             notionPageUrl: notionResult.pageUrl,
             status: "completed",
@@ -129,7 +132,7 @@ export const appRouter = router({
 
           return {
             success: true,
-            transcribedText,
+            transcribedText: formattedText,
             notionPageUrl: notionResult.pageUrl,
           };
         } catch (error) {
@@ -173,6 +176,29 @@ export const appRouter = router({
       }),
   }),
 });
+
+/**
+ * Format transcribed text into structured bullet points using LLM
+ */
+async function formatTextToBulletPoints(text: string): Promise<string> {
+  const { invokeLLM } = await import('./_core/llm');
+  
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content: "あなたは日記の整理を手伝うアシスタントです。ユーザーが音声で入力した内容を、読みやすい箇条書き形式に整理してください。重要なポイントを抽出し、論理的な順序で並べてください。元の意味を変えずに、簡潔で分かりやすい箇条書きにしてください。"
+      },
+      {
+        role: "user",
+        content: `以下の音声入力テキストを箇条書き形式に整理してください：\n\n${text}`
+      }
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  return typeof content === 'string' ? content : text;
+}
 
 /**
  * Save diary entry to Notion database

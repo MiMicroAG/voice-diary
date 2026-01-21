@@ -81,11 +81,11 @@ export function DiaryEntries({ entries }: DiaryEntriesProps) {
             {/* Transcribed text */}
             {entry.transcribedText && (
               <div className="prose prose-sm max-w-none">
-                <p className="text-foreground leading-relaxed">
-                  {entry.transcribedText.length > 300
-                    ? `${entry.transcribedText.substring(0, 300)}...`
+                <div className="text-foreground leading-relaxed whitespace-pre-wrap">
+                  {entry.transcribedText.length > 500
+                    ? `${entry.transcribedText.substring(0, 500)}...`
                     : entry.transcribedText}
-                </p>
+                </div>
               </div>
             )}
 
