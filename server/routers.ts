@@ -466,9 +466,10 @@ async function saveToNotion(params: {
   // Extract page id from JSON response (notion-create-pages returns {pages:[{id:...}]})
   let pageId = "";
   try {
-    const jsonMatch = result.match(/\{"pages":\[\{[^\]]+\}\]\}/);
-    if (jsonMatch) {
-      const jsonObj = JSON.parse(jsonMatch[0]);
+    // Extract JSON from "Tool execution result:" line
+    const resultMatch = result.match(/Tool execution result:\s*({[\s\S]*})/);
+    if (resultMatch) {
+      const jsonObj = JSON.parse(resultMatch[1]);
       if (jsonObj.pages && jsonObj.pages.length > 0) {
         pageId = jsonObj.pages[0].id;
       }

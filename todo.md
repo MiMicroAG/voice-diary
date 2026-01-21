@@ -151,3 +151,8 @@
 - [x] formatTextToBulletPoints関数のLLMプロンプトを修正（「昨日の日記に」「3日前の日記に」などのメタ情報を削除）
 - [x] 既存のNotionレコードを確認（手動修正を推奨）
 - [x] テストと検証（今後の録音でメタ情報が削除されることを確認）
+
+## バグ修正19
+- [x] Notion APIからpage_idの抽出に失敗するエラーを調査
+- [x] saveToNotion関数のpage_id抽出ロジックを修正（Tool execution result:行からJSONを抽出）
+- [x] テストと検証（ユーザーに確認依頼）
