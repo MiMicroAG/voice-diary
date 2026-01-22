@@ -95,7 +95,7 @@ export default function Home() {
           {/* Hero section */}
           <div className="space-y-6">
             <h1 className="text-7xl md:text-8xl font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
-              音声日記
+              AIものぐさ日記
             </h1>
             <div className="divider mx-auto w-32" />
             <h2 className="text-2xl md:text-3xl font-light" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
@@ -128,7 +128,7 @@ export default function Home() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container py-6 flex items-center justify-between">
           <h1 className="text-4xl font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
-            音声日記
+            AIものぐさ日記
           </h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
@@ -187,7 +187,7 @@ export default function Home() {
       <footer className="border-t border-border mt-24">
         <div className="container py-8 text-center">
           <p className="text-sm text-muted-foreground">
-            音声日記 - あなたの声を、永遠に
+            AIものぐさ日記 - あなたの声を、永遠に
           </p>
         </div>
       </footer>
