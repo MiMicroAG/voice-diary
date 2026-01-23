@@ -43,14 +43,14 @@ export function DiaryEditor({ initialData, onSave, onCancel, isSaving }: DiaryEd
   };
 
   const handleSave = async () => {
-    // Convert YYYY-MM-DD to ISO string with JST timezone
-    const dateObj = new Date(date + 'T00:00:00+09:00');
+    // Send date string directly (YYYY-MM-DD format)
+    // Server will handle JST timezone conversion
     await onSave({
       recordingId: initialData.recordingId,
       title,
       content,
       tags,
-      date: dateObj.toISOString(),
+      date, // Send YYYY-MM-DD string directly
     });
   };
 

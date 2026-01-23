@@ -113,7 +113,7 @@ export const appRouter = router({
 
           const transcribedText = transcription.text;
 
-          // Extract metadata (date and tags) from transcribed text
+          // Extract metadata (tags only) from transcribed text
           const metadata = await extractMetadata(transcribedText);
           
           // Merge user-selected tags with AI-extracted tags
@@ -124,8 +124,9 @@ export const appRouter = router({
           // Format text into bullet points using LLM
           const formattedText = await formatTextToBulletPoints(transcribedText);
 
-          // Convert to JST to get the correct date components for title
-          const jstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+          // Always use today's date (JST) regardless of audio content
+          const now = new Date();
+          const jstDateStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
           const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
           const [year, month, day] = jstDate.split('-');
           const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
@@ -142,7 +143,7 @@ export const appRouter = router({
             title,
             transcribedText: formattedText,
             tags: allTags,
-            date: metadata.date.toISOString(),
+            date: jstDate, // Return YYYY-MM-DD string directly
           };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -166,7 +167,7 @@ export const appRouter = router({
         title: z.string(),
         content: z.string(),
         tags: z.array(z.string()),
-        date: z.string(), // ISO date string
+        date: z.string(), // YYYY-MM-DD date string
       }))
       .mutation(async ({ ctx, input }) => {
         const recording = await getRecordingById(input.recordingId);
@@ -176,8 +177,8 @@ export const appRouter = router({
         }
 
         try {
-          // Parse date from ISO string
-          const date = new Date(input.date);
+          // Parse date from YYYY-MM-DD string as JST
+          const date = new Date(input.date + 'T00:00:00+09:00');
           
           // Save to Notion
           const notionResult = await saveToNotion({

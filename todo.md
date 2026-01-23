@@ -219,3 +219,10 @@
 - [x] 「登録」ボタンでNotionに保存（saveToNotionDiary procedure）
 - [x] 音声入力を省略して直接テキスト入力できる機能を追加
 - [x] テストと検証（13 tests passed）
+
+## バグ修正25
+- [x] Notionの日付カラムが1日ずれて表示される問題を調査
+- [x] 日付変換ロジック（DiaryEditor、routers.ts、Home.tsx）を修正
+- [x] YYYY-MM-DD文字列を直接送信する方式に変更
+- [x] 音声内容に関わらず、デフォルトを今日の日付に設定
+- [x] テストと検証

@@ -98,7 +98,7 @@ export default function Home() {
       title: `日記 ${dateStr}`,
       content: "",
       tags: [],
-      date: now.toISOString(),
+      date: jstDate, // Send YYYY-MM-DD string directly
     });
     setEditorMode("direct");
   };
