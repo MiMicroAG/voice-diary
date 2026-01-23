@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { DiaryEntries } from "@/components/DiaryEntries";
 import { DiaryEditor, type DiaryData } from "@/components/DiaryEditor";
+import { DiaryCalendar } from "@/components/DiaryCalendar";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
@@ -153,6 +154,77 @@ export default function Home() {
     setDiaryData(null);
   };
 
+  const queryDiariesMutation = trpc.notion.queryDiaries.useQuery(
+    { startDate: "", endDate: "" },
+    { enabled: false }
+  );
+  
+  const mergeDuplicatesMutation = trpc.notion.mergeDuplicates.useMutation();
+
+  const handleMergeDuplicates = async () => {
+    try {
+      toast.info("重複した日記をマージ中...");
+      
+      const result = await mergeDuplicatesMutation.mutateAsync();
+      
+      toast.success("マージが完了しました！", {
+        description: `${result.mergedCount}件のタイトルを統合し、${result.deletedCount}件の重複を削除しました`
+      });
+      
+      // Refresh the recordings list
+      refetch();
+      
+    } catch (error) {
+      console.error("Merge error:", error);
+      toast.error("マージに失敗しました", {
+        description: error instanceof Error ? error.message : "不明なエラーが発生しました"
+      });
+    }
+  };
+
+  const handleDateClick = async (dateString: string) => {
+    try {
+      toast.info("日記を検索中...");
+      
+      // Fetch diaries for the selected date using fetch
+      const response = await fetch(
+        `/api/trpc/notion.queryDiaries?input=${encodeURIComponent(JSON.stringify({ startDate: dateString, endDate: dateString }))}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('日記の検索に失敗しました');
+      }
+      
+      const data = await response.json();
+      const entries = data.result.data;
+      
+      if (!entries || entries.length === 0) {
+        toast.info("この日付の日記は見つかりませんでした");
+        return;
+      }
+      
+      // Show the first entry (or merge if multiple)
+      const entry = entries[0];
+      toast.success(`${entry.title}を表示します`, {
+        action: {
+          label: "開く",
+          onClick: () => window.open(entry.pageUrl, '_blank'),
+        },
+      });
+      
+    } catch (error) {
+      console.error("Date click error:", error);
+      toast.error("日記の検索に失敗しました", {
+        description: error instanceof Error ? error.message : "不明なエラーが発生しました"
+      });
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -241,6 +313,40 @@ export default function Home() {
                   >
                     <PenSquare className="h-4 w-4" />
                     テキストで直接入力
+                  </Button>
+                </div>
+              </section>
+
+              <div className="divider" />
+
+              {/* Calendar section */}
+              <section className="space-y-6">
+                <div className="text-center space-y-2">
+                  <h2 className="text-3xl font-light" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                    日記を参照
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    日付をクリックしてその日の日記を確認
+                  </p>
+                </div>
+                <DiaryCalendar onDateClick={handleDateClick} />
+                
+                {/* Merge duplicates button */}
+                <div className="text-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleMergeDuplicates}
+                    disabled={isProcessing || mergeDuplicatesMutation.isPending}
+                    className="gap-2"
+                  >
+                    {mergeDuplicatesMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        マージ中...
+                      </>
+                    ) : (
+                      "同じタイトルの日記をマージ"
+                    )}
                   </Button>
                 </div>
               </section>

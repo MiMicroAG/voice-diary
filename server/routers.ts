@@ -243,6 +243,127 @@ export const appRouter = router({
         };
       }),
   }),
+
+  /**
+   * Notion diary router
+   */
+  notion: router({
+    /**
+     * Query diary entries from Notion
+     */
+    queryDiaries: protectedProcedure
+      .input(z.object({
+        startDate: z.string().optional(), // YYYY-MM-DD
+        endDate: z.string().optional(), // YYYY-MM-DD
+        title: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { queryDiaryEntries } = await import('./notion');
+        
+        const options: any = {};
+        if (input.startDate) {
+          options.startDate = new Date(input.startDate + 'T00:00:00+09:00');
+        }
+        if (input.endDate) {
+          options.endDate = new Date(input.endDate + 'T00:00:00+09:00');
+        }
+        if (input.title) {
+          options.title = input.title;
+        }
+        
+        const entries = await queryDiaryEntries(options);
+        return entries;
+      }),
+    
+    /**
+     * Merge duplicate diary entries with the same title
+     */
+    mergeDuplicates: protectedProcedure
+      .mutation(async () => {
+        const { queryDiaryEntries, updatePage, deletePage } = await import('./notion');
+        
+        // Get all diary entries
+        const allEntries = await queryDiaryEntries();
+        
+        type DiaryEntry = {
+          pageId: string;
+          pageUrl: string;
+          title: string;
+          content: string;
+          tags: string[];
+          date: string;
+        };
+        
+        // Group by title
+        const groupedByTitle = new Map<string, DiaryEntry[]>();
+        for (const entry of allEntries) {
+          const existing = groupedByTitle.get(entry.title) || [];
+          existing.push(entry);
+          groupedByTitle.set(entry.title, existing);
+        }
+        
+        let mergedCount = 0;
+        let deletedCount = 0;
+        
+        // Process each group
+        for (const [title, entries] of Array.from(groupedByTitle.entries())) {
+          if (entries.length <= 1) {
+            continue; // No duplicates
+          }
+          
+          console.log(`[mergeDuplicates] Found ${entries.length} entries with title: ${title}`);
+          
+          // Sort by date (newest first)
+          entries.sort((a: DiaryEntry, b: DiaryEntry) => b.date.localeCompare(a.date));
+          
+          // Keep the first (newest) entry as the master
+          const masterEntry = entries[0];
+          const duplicateEntries = entries.slice(1);
+          
+          // Merge content
+          const mergedContent = [
+            masterEntry.content,
+            ...duplicateEntries.map(e => e.content)
+          ].filter(c => c.trim().length > 0).join('\n\n');
+          
+          // Merge tags (OR operation - union of all tags)
+          const allTags = new Set<string>();
+          for (const entry of entries) {
+            for (const tag of entry.tags) {
+              allTags.add(tag);
+            }
+          }
+          const mergedTags = Array.from(allTags);
+          
+          console.log(`[mergeDuplicates] Merging into master entry: ${masterEntry.pageId}`);
+          console.log(`[mergeDuplicates] Merged content length: ${mergedContent.length}`);
+          console.log(`[mergeDuplicates] Merged tags: ${mergedTags.join(', ')}`);
+          
+          // Update master entry
+          await updatePage(masterEntry.pageId, {
+            content: mergedContent,
+            tags: mergedTags
+          });
+          
+          mergedCount++;
+          
+          // Delete duplicate entries
+          for (const duplicate of duplicateEntries) {
+            console.log(`[mergeDuplicates] Deleting duplicate entry: ${duplicate.pageId}`);
+            await deletePage(duplicate.pageId);
+            deletedCount++;
+          }
+        }
+        
+        console.log(`[mergeDuplicates] Merge complete: ${mergedCount} titles merged, ${deletedCount} duplicates deleted`);
+        
+        return {
+          success: true,
+          mergedCount,
+          deletedCount
+        };
+      }),
+  }),
 });
 
 /**

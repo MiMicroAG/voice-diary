@@ -203,3 +203,285 @@ export async function testNotionConnection(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Query diary entries from Notion database
+ * 
+ * @param options - Query options (date range, title filter)
+ * @returns Array of diary entries
+ */
+export async function queryDiaryEntries(options?: {
+  startDate?: Date;
+  endDate?: Date;
+  title?: string;
+}): Promise<Array<{
+  pageId: string;
+  pageUrl: string;
+  title: string;
+  content: string;
+  tags: string[];
+  date: string; // YYYY-MM-DD
+}>> {
+  const NOTION_API_KEY = process.env.NOTION_API_KEY;
+  const DATABASE_ID = "9362df01-b45f-4352-a1a4-2312ed213756";
+  
+  if (!NOTION_API_KEY) {
+    throw new Error('NOTION_API_KEY environment variable is not set');
+  }
+  
+  try {
+    // Build filter
+    const filter: any = { and: [] };
+    
+    if (options?.startDate) {
+      filter.and.push({
+        property: "日付",
+        date: {
+          on_or_after: formatDateAsJST(options.startDate)
+        }
+      });
+    }
+    
+    if (options?.endDate) {
+      filter.and.push({
+        property: "日付",
+        date: {
+          on_or_before: formatDateAsJST(options.endDate)
+        }
+      });
+    }
+    
+    if (options?.title) {
+      filter.and.push({
+        property: "タイトル",
+        title: {
+          contains: options.title
+        }
+      });
+    }
+    
+    // If no filters, remove the 'and' wrapper
+    const requestBody: any = {
+      sorts: [
+        {
+          property: "日付",
+          direction: "descending"
+        }
+      ]
+    };
+    
+    if (filter.and.length > 0) {
+      requestBody.filter = filter;
+    }
+    
+    console.log('[queryDiaryEntries] Request body:', JSON.stringify(requestBody, null, 2));
+    
+    // Make API request
+    const response = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[queryDiaryEntries] Notion API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Notion API error (${response.status}): ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('[queryDiaryEntries] Found', data.results.length, 'entries');
+    
+    // Parse results
+    const entries = data.results.map((page: any) => {
+      const properties = page.properties;
+      
+      // Extract title
+      const titleProp = properties['タイトル'];
+      const title = titleProp?.title?.[0]?.plain_text || '';
+      
+      // Extract content
+      const contentProp = properties['本文'];
+      const content = contentProp?.rich_text?.[0]?.plain_text || '';
+      
+      // Extract tags
+      const tagsProp = properties['タグ'];
+      const tags = tagsProp?.multi_select?.map((tag: any) => tag.name) || [];
+      
+      // Extract date
+      const dateProp = properties['日付'];
+      const date = dateProp?.date?.start || '';
+      
+      return {
+        pageId: page.id,
+        pageUrl: page.url || `https://www.notion.so/${page.id.replace(/-/g, '')}`,
+        title,
+        content,
+        tags,
+        date
+      };
+    });
+    
+    return entries;
+    
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('[queryDiaryEntries] Error:', error.message);
+      throw error;
+    } else {
+      console.error('[queryDiaryEntries] Unknown error:', error);
+      throw new Error('Failed to query diary entries: Unknown error');
+    }
+  }
+}
+
+/**
+ * Delete a Notion page
+ * 
+ * @param pageId - ID of the page to delete
+ */
+export async function deletePage(pageId: string): Promise<void> {
+  const NOTION_API_KEY = process.env.NOTION_API_KEY;
+  
+  if (!NOTION_API_KEY) {
+    throw new Error('NOTION_API_KEY environment variable is not set');
+  }
+  
+  try {
+    const response = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        archived: true
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[deletePage] Notion API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Failed to delete page: ${response.statusText}`);
+    }
+    
+    console.log('[deletePage] Successfully deleted page:', pageId);
+    
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('[deletePage] Error:', error.message);
+      throw error;
+    } else {
+      console.error('[deletePage] Unknown error:', error);
+      throw new Error('Failed to delete page: Unknown error');
+    }
+  }
+}
+
+/**
+ * Update a Notion page
+ * 
+ * @param pageId - ID of the page to update
+ * @param params - Update parameters
+ */
+export async function updatePage(pageId: string, params: {
+  title?: string;
+  content?: string;
+  tags?: string[];
+  date?: Date;
+}): Promise<void> {
+  const NOTION_API_KEY = process.env.NOTION_API_KEY;
+  
+  if (!NOTION_API_KEY) {
+    throw new Error('NOTION_API_KEY environment variable is not set');
+  }
+  
+  try {
+    const properties: any = {};
+    
+    if (params.title !== undefined) {
+      properties['タイトル'] = {
+        title: [
+          {
+            type: "text",
+            text: {
+              content: params.title
+            }
+          }
+        ]
+      };
+    }
+    
+    if (params.content !== undefined) {
+      properties['本文'] = {
+        rich_text: [
+          {
+            type: "text",
+            text: {
+              content: params.content
+            }
+          }
+        ]
+      };
+    }
+    
+    if (params.tags !== undefined) {
+      properties['タグ'] = {
+        multi_select: params.tags.map(tag => ({ name: tag }))
+      };
+    }
+    
+    if (params.date !== undefined) {
+      properties['日付'] = {
+        date: {
+          start: formatDateAsJST(params.date),
+          time_zone: null
+        }
+      };
+    }
+    
+    const response = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ properties })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[updatePage] Notion API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Failed to update page: ${response.statusText}`);
+    }
+    
+    console.log('[updatePage] Successfully updated page:', pageId);
+    
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('[updatePage] Error:', error.message);
+      throw error;
+    } else {
+      console.error('[updatePage] Unknown error:', error);
+      throw new Error('Failed to update page: Unknown error');
+    }
+  }
+}
