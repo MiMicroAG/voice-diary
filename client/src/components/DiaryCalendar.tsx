@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
@@ -71,9 +71,15 @@ export function DiaryCalendar({ diaryEntries, isLoading, onMonthChange }: DiaryC
     calendarDays.push({ date: day, month: 'next', dateString });
   }
   
-  // Notify parent of month change
+  // Track previous month to avoid infinite loops
+  const prevMonthRef = useRef({ year, month });
+  
+  // Notify parent of month change only when year or month actually changes
   useEffect(() => {
-    onMonthChange(year, month + 1); // month is 0-indexed, so add 1
+    if (prevMonthRef.current.year !== year || prevMonthRef.current.month !== month) {
+      prevMonthRef.current = { year, month };
+      onMonthChange(year, month + 1); // month is 0-indexed, so add 1
+    }
   }, [year, month, onMonthChange]);
 
   // Navigate to previous month
