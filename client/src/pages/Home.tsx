@@ -337,7 +337,7 @@ export default function Home() {
                   </h2>
                   {recordings && recordings.length > 0 && (
                     <span className="text-label text-muted-foreground">
-                      {recordings.length} エントリー
+                      最新 {Math.min(recordings.length, 10)} 件 / 全 {recordings.length} エントリー
                     </span>
                   )}
                 </div>
@@ -347,7 +347,7 @@ export default function Home() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : (
-                  <DiaryEntries entries={recordings || []} />
+                  <DiaryEntries entries={(recordings || []).slice(0, 10)} />
                 )}
               </section>
             </>
