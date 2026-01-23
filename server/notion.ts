@@ -316,13 +316,17 @@ export async function queryDiaryEntries(options?: {
       const tagsProp = properties['タグ'];
       const tags = tagsProp?.multi_select?.map((tag: any) => tag.name) || [];
       
-      // Extract date and normalize to YYYY-MM-DD format
+      // Extract date and normalize to YYYY-MM-DD format in JST
       const dateProp = properties['日付'];
       let date = dateProp?.date?.start || '';
       
-      // Normalize date to YYYY-MM-DD format (remove time and timezone if present)
-      if (date && date.includes('T')) {
-        date = date.split('T')[0];
+      // Normalize date to YYYY-MM-DD format
+      if (date) {
+        // Parse the date string as UTC and convert to JST
+        const utcDate = new Date(date);
+        // Convert to JST (UTC+9) and format as YYYY-MM-DD
+        const jstDateStr = utcDate.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' }).split(' ')[0];
+        date = jstDateStr;
       }
       
       return {
