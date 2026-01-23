@@ -154,12 +154,8 @@ export default function Home() {
     setDiaryData(null);
   };
 
-  const queryDiariesMutation = trpc.notion.queryDiaries.useQuery(
-    { startDate: "", endDate: "" },
-    { enabled: false }
-  );
-  
   const mergeDuplicatesMutation = trpc.notion.mergeDuplicates.useMutation();
+  const trpcUtils = trpc.useUtils();
 
   const handleMergeDuplicates = async () => {
     try {
@@ -186,22 +182,11 @@ export default function Home() {
     try {
       toast.info("日記を検索中...");
       
-      // Fetch diaries for the selected date using fetch
-      const response = await fetch(
-        `/api/trpc/notion.queryDiaries?input=${encodeURIComponent(JSON.stringify({ startDate: dateString, endDate: dateString }))}`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error('日記の検索に失敗しました');
-      }
-      
-      const data = await response.json();
-      const entries = data.result.data;
+      // Query diaries for the selected date using tRPC utils
+      const entries = await trpcUtils.notion.queryDiaries.fetch({
+        startDate: dateString,
+        endDate: dateString,
+      });
       
       if (!entries || entries.length === 0) {
         toast.info("この日付の日記は見つかりませんでした");
