@@ -156,6 +156,21 @@ export default function Home() {
 
   const mergeDuplicatesMutation = trpc.notion.mergeDuplicates.useMutation();
   const trpcUtils = trpc.useUtils();
+  
+  // State for calendar month
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
+  
+  // Query diaries for the current calendar month
+  const { data: monthDiaries, isLoading: monthDiariesLoading } = trpc.notion.queryDiaries.useQuery(
+    {
+      startDate: `${calendarMonth.year}-${String(calendarMonth.month).padStart(2, '0')}-01`,
+      endDate: `${calendarMonth.year}-${String(calendarMonth.month).padStart(2, '0')}-31`,
+    },
+    { enabled: isAuthenticated }
+  );
 
   const handleMergeDuplicates = async () => {
     try {
@@ -178,36 +193,8 @@ export default function Home() {
     }
   };
 
-  const handleDateClick = async (dateString: string) => {
-    try {
-      toast.info("日記を検索中...");
-      
-      // Query diaries for the selected date using tRPC utils
-      const entries = await trpcUtils.notion.queryDiaries.fetch({
-        startDate: dateString,
-        endDate: dateString,
-      });
-      
-      if (!entries || entries.length === 0) {
-        toast.info("この日付の日記は見つかりませんでした");
-        return;
-      }
-      
-      // Show the first entry (or merge if multiple)
-      const entry = entries[0];
-      toast.success(`${entry.title}を表示します`, {
-        action: {
-          label: "開く",
-          onClick: () => window.open(entry.pageUrl, '_blank'),
-        },
-      });
-      
-    } catch (error) {
-      console.error("Date click error:", error);
-      toast.error("日記の検索に失敗しました", {
-        description: error instanceof Error ? error.message : "不明なエラーが発生しました"
-      });
-    }
+  const handleMonthChange = (year: number, month: number) => {
+    setCalendarMonth({ year, month });
   };
 
   if (authLoading) {
@@ -314,7 +301,11 @@ export default function Home() {
                     日付をクリックしてその日の日記を確認
                   </p>
                 </div>
-                <DiaryCalendar onDateClick={handleDateClick} />
+                <DiaryCalendar 
+                  diaryEntries={monthDiaries || []}
+                  isLoading={monthDiariesLoading}
+                  onMonthChange={handleMonthChange}
+                />
                 
                 {/* Merge duplicates button */}
                 <div className="text-center pt-4">

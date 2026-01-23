@@ -1,14 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
-interface DiaryCalendarProps {
-  onDateClick: (date: string) => void; // YYYY-MM-DD format
+interface DiaryEntry {
+  pageId: string;
+  pageUrl: string;
+  title: string;
+  content: string;
+  tags: string[];
+  date: string;
 }
 
-export function DiaryCalendar({ onDateClick }: DiaryCalendarProps) {
+interface DiaryCalendarProps {
+  diaryEntries: DiaryEntry[];
+  isLoading: boolean;
+  onMonthChange: (year: number, month: number) => void;
+}
+
+export function DiaryCalendar({ diaryEntries, isLoading, onMonthChange }: DiaryCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   // Get current month and year
   const year = currentDate.getFullYear();
@@ -50,6 +71,11 @@ export function DiaryCalendar({ onDateClick }: DiaryCalendarProps) {
     calendarDays.push({ date: day, month: 'next', dateString });
   }
   
+  // Notify parent of month change
+  useEffect(() => {
+    onMonthChange(year, month + 1); // month is 0-indexed, so add 1
+  }, [year, month, onMonthChange]);
+
   // Navigate to previous month
   const goToPrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -58,6 +84,23 @@ export function DiaryCalendar({ onDateClick }: DiaryCalendarProps) {
   // Navigate to next month
   const goToNextMonth = () => {
     setCurrentDate(new Date(year, month + 1, 1));
+  };
+  
+  // Create a map of date strings to diary entries
+  const diaryMap = new Map<string, DiaryEntry>();
+  for (const entry of diaryEntries) {
+    diaryMap.set(entry.date, entry);
+  }
+  
+  // Handle date click
+  const handleDateClick = (dateString: string, isCurrentMonth: boolean) => {
+    if (!isCurrentMonth) return; // Ignore clicks on other months
+    
+    const entry = diaryMap.get(dateString);
+    if (entry) {
+      setSelectedEntry(entry);
+      setIsDialogOpen(true);
+    }
   };
   
   // Month names in Japanese
@@ -118,22 +161,80 @@ export function DiaryCalendar({ onDateClick }: DiaryCalendarProps) {
           const isToday = day.dateString === todayString;
           const isCurrentMonth = day.month === 'current';
           
+          const hasDiary = diaryMap.has(day.dateString);
+          const isClickable = isCurrentMonth && hasDiary;
+          
           return (
             <button
               key={index}
-              onClick={() => onDateClick(day.dateString)}
+              onClick={() => handleDateClick(day.dateString, isCurrentMonth)}
+              disabled={!isClickable}
               className={`
                 aspect-square flex items-center justify-center rounded-md text-sm
-                transition-colors
-                ${isCurrentMonth ? 'text-foreground hover:bg-accent' : 'text-muted-foreground hover:bg-accent/50'}
-                ${isToday ? 'bg-primary text-primary-foreground font-bold hover:bg-primary/90' : ''}
+                transition-colors relative
+                ${
+                  isToday
+                    ? 'bg-primary text-primary-foreground font-bold hover:bg-primary/90'
+                    : hasDiary && isCurrentMonth
+                    ? 'bg-accent text-accent-foreground hover:bg-accent/80 cursor-pointer'
+                    : isCurrentMonth
+                    ? 'text-muted-foreground/50 cursor-not-allowed'
+                    : 'text-muted-foreground/30 cursor-not-allowed'
+                }
+                ${!isClickable ? 'opacity-50' : ''}
               `}
             >
               {day.date}
+              {hasDiary && isCurrentMonth && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-current" />
+              )}
             </button>
           );
         })}
       </div>
+      
+      {/* Diary preview dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedEntry?.title}</span>
+              {selectedEntry && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(selectedEntry.pageUrl, '_blank')}
+                  className="gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Notionで開く
+                </Button>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedEntry?.date}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Tags */}
+            {selectedEntry && selectedEntry.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedEntry.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            
+            {/* Content */}
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-wrap">{selectedEntry?.content}</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
