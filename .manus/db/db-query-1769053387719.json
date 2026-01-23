@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, status, errorMessage, createdAt FROM recordings ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4QxsGrujg4ZXseJ.root --database NnaWYzKeqY3HPdPh2AcsoE --execute SELECT id, status, errorMessage, createdAt FROM recordings ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "60012",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-22 03:41:40"
+    },
+    {
+      "id": "60011",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-22 03:36:07"
+    },
+    {
+      "id": "60010",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-22 03:32:17"
+    },
+    {
+      "id": "60009",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-22 03:20:53"
+    },
+    {
+      "id": "60008",
+      "status": "failed",
+      "errorMessage": "Failed to create Notion page: ",
+      "createdAt": "2026-01-22 03:20:04"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\terrorMessage\tcreatedAt\n60012\tfailed\tFailed to create Notion page: \t2026-01-22 03:41:40\n60011\tfailed\tFailed to create Notion page: \t2026-01-22 03:36:07\n60010\tfailed\tFailed to create Notion page: \t2026-01-22 03:32:17\n60009\tfailed\tFailed to create Notion page: \t2026-01-22 03:20:53\n60008\tfailed\tFailed to create Notion page: \t2026-01-22 03:20:04\n",
+  "stderr": "",
+  "execution_time_ms": 1479
+}
