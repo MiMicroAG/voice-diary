@@ -113,7 +113,7 @@ export const appRouter = router({
 
           const transcribedText = transcription.text;
 
-          // Extract metadata (tags only) from transcribed text
+          // Extract metadata (date and tags) from transcribed text
           const metadata = await extractMetadata(transcribedText);
           
           // Merge user-selected tags with AI-extracted tags
@@ -124,13 +124,17 @@ export const appRouter = router({
           // Format text into bullet points using LLM
           const formattedText = await formatTextToBulletPoints(transcribedText);
 
-          // Always use today's date (JST) regardless of audio content
+          // Use extracted date from audio content for title
+          const titleJstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+          const titleJstDate = titleJstDateStr.split(' ')[0]; // YYYY-MM-DD
+          const [titleYear, titleMonth, titleDay] = titleJstDate.split('-');
+          const titleDateStr = `${titleYear}/${parseInt(titleMonth)}/${parseInt(titleDay)}`;
+          const title = `日記 ${titleDateStr}`;
+          
+          // Always use today's date (JST) for date field (recording date)
           const now = new Date();
-          const jstDateStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
-          const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
-          const [year, month, day] = jstDate.split('-');
-          const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
-          const title = `日記 ${dateStr}`;
+          const recordingJstDateStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+          const recordingJstDate = recordingJstDateStr.split(' ')[0]; // YYYY-MM-DD
           
           // Update recording with transcribed text (but not Notion info yet)
           await updateRecording(input.recordingId, {
@@ -143,7 +147,7 @@ export const appRouter = router({
             title,
             transcribedText: formattedText,
             tags: allTags,
-            date: jstDate, // Return YYYY-MM-DD string directly
+            date: recordingJstDate, // Return today's date (recording date)
           };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";

@@ -62,7 +62,7 @@ export function DiaryEditor({ initialData, onSave, onCancel, isSaving }: DiaryEd
           id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="日記 2026/1/23"
+          placeholder="日記のタイトル"
         />
       </div>
 
@@ -99,13 +99,15 @@ export function DiaryEditor({ initialData, onSave, onCancel, isSaving }: DiaryEd
       <div className="space-y-2">
         <Label htmlFor="date" className="flex items-center gap-2">
           <Calendar className="h-4 w-4" />
-          日付
+          日付（録音日）
         </Label>
         <Input
           id="date"
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          readOnly
+          disabled
+          className="w-full bg-muted cursor-not-allowed"
         />
       </div>
 
