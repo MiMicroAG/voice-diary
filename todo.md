@@ -198,3 +198,16 @@
 - [x] バージョン確認用APIエンドポイントを実装（/api/trpc/system.version）
 - [x] ENV.versionIdをenv.tsに追加
 - [x] バージョン確認方法ドキュメントを作成
+
+## バグ修正24
+- [x] 公開URLで「音声をテキストに変換中」後の処理失敗エラーを調査
+- [x] ログを確認してエラー原因を特定（MCP認証問題の可能性）
+- [x] 解決策：Notion REST API直接呼び出し方式に変更
+
+## 機能変更5
+- [x] Notion REST API呼び出し関数を実装（server/notion.ts）
+- [x] 環境変数NOTION_API_KEYをリクエスト・設定
+- [x] 既存のsaveToNotion関数をREST API方式に置き換え
+- [x] MCP依存コードを削除（routers.tsからspawnSync呼び出しを削除）
+- [x] テストを実装・実行（server/notion.test.ts、全テスト成功）
+- [x] データベースIDを正しいものに更新

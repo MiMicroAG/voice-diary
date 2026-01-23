@@ -7,6 +7,7 @@ import { createRecording, updateRecording, getUserRecordings, getRecordingById }
 import { storagePut } from "./storage";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { TRPCError } from "@trpc/server";
+import { saveToNotion as saveToNotionRestAPI } from "./notion";
 
 export const appRouter = router({
   system: systemRouter,
@@ -412,7 +413,10 @@ ${text}`
 }
 
 /**
- * Save diary entry to Notion database
+ * Save diary entry to Notion database using REST API
+ * 
+ * This function now uses direct REST API calls instead of MCP,
+ * eliminating environment dependencies and improving reliability.
  */
 async function saveToNotion(params: {
   title: string;
@@ -420,97 +424,7 @@ async function saveToNotion(params: {
   tags: string[];
   date: Date;
 }): Promise<{ pageId: string; pageUrl: string }> {
-  const { spawnSync } = await import('child_process');
-  
-  // Validate date
-  if (!params.date || isNaN(params.date.getTime())) {
-    console.error("Invalid date provided to saveToNotion, using current date");
-    params.date = new Date();
-  }
-  
-  console.log(`[saveToNotion] Saving with title: ${params.title}, date: ${params.date.toISOString()}`);
-  
-  const notionInput = {
-    parent: {
-      data_source_id: "94518c78-84e5-4fb2-aea2-165124d31bf3"
-    },
-    pages: [
-      {
-        properties: {
-          "タイトル": params.title,
-          "本文": params.content,
-          "タグ": JSON.stringify(params.tags),
-          "date:日付:start": params.date.toISOString(),
-          "date:日付:is_datetime": 1,
-        }
-      }
-    ]
-  };
-
-  const spawnResult = spawnSync(
-    'manus-mcp-cli',
-    ['tool', 'call', 'notion-create-pages', '--server', 'notion', '--input', JSON.stringify(notionInput)],
-    { encoding: 'utf-8' }
-  );
-  
-  const result = spawnResult.stdout || spawnResult.stderr || '';
-  
-  console.log('[saveToNotion] manus-mcp-cli output:', result);
-  
-  if (spawnResult.status !== 0) {
-    console.error('[saveToNotion] manus-mcp-cli failed with status:', spawnResult.status);
-    console.error('[saveToNotion] Error output:', result);
-    throw new Error(`Failed to create Notion page: ${result}`);
-  }
-  
-  // Extract JSON file path from output
-  // The output format is: "Tool execution result saved to: /path/to/file.json"
-  const filePathMatch = result.match(/Tool execution result saved to: (.+\.json)/);
-  if (!filePathMatch) {
-    console.error('[saveToNotion] Failed to extract JSON file path from output');
-    console.error('[saveToNotion] Output:', result);
-    throw new Error('Failed to extract JSON file path from manus-mcp-cli output');
-  }
-  
-  const jsonFilePath = filePathMatch[1].trim();
-  console.log('[saveToNotion] Reading JSON file:', jsonFilePath);
-  
-  // Read JSON file
-  let pageId = "";
-  let pageUrl = "";
-  try {
-    const fs = await import('fs');
-    const fileContent = fs.readFileSync(jsonFilePath, 'utf-8');
-    const jsonObj = JSON.parse(fileContent);
-    
-    console.log('[saveToNotion] Parsed JSON:', JSON.stringify(jsonObj, null, 2));
-    
-    if (jsonObj.pages && jsonObj.pages.length > 0) {
-      pageId = jsonObj.pages[0].id;
-      pageUrl = jsonObj.pages[0].url || '';
-    } else {
-      console.error('[saveToNotion] No pages found in JSON response');
-      throw new Error('No pages found in Notion response');
-    }
-  } catch (e) {
-    console.error('[saveToNotion] Failed to read or parse JSON file:', e);
-    throw new Error(`Failed to read Notion response file: ${e instanceof Error ? e.message : String(e)}`);
-  }
-  
-  if (!pageId) {
-    throw new Error('Failed to extract page_id from Notion response');
-  }
-  
-  // Use pageUrl from JSON response, or generate from page ID if not available
-  if (!pageUrl) {
-    const pageIdWithoutHyphens = pageId.replace(/-/g, '');
-    pageUrl = `https://www.notion.so/${pageIdWithoutHyphens}`;
-  }
-  
-  console.log('[saveToNotion] Successfully created page:', pageId);
-  console.log('[saveToNotion] Page URL:', pageUrl);
-
-  return { pageId, pageUrl };
+  return saveToNotionRestAPI(params);
 }
 
 export type AppRouter = typeof appRouter;
