@@ -316,9 +316,14 @@ export async function queryDiaryEntries(options?: {
       const tagsProp = properties['タグ'];
       const tags = tagsProp?.multi_select?.map((tag: any) => tag.name) || [];
       
-      // Extract date
+      // Extract date and normalize to YYYY-MM-DD format
       const dateProp = properties['日付'];
-      const date = dateProp?.date?.start || '';
+      let date = dateProp?.date?.start || '';
+      
+      // Normalize date to YYYY-MM-DD format (remove time and timezone if present)
+      if (date && date.includes('T')) {
+        date = date.split('T')[0];
+      }
       
       return {
         pageId: page.id,
