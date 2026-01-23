@@ -1,0 +1,1 @@
+ALTER TABLE `recordings` MODIFY COLUMN `status` enum('uploading','processing','transcribed','completed','failed') NOT NULL DEFAULT 'uploading';

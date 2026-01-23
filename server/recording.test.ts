@@ -203,3 +203,35 @@ describe("Database helpers", () => {
     }
   });
 });
+
+describe('JST date formatting', () => {
+  it('should format Date as JST date string (YYYY-MM-DD)', () => {
+    // Test with a specific UTC date
+    const utcDate = new Date('2026-01-23T03:00:00.000Z'); // UTC 2026-01-23 03:00 = JST 2026-01-23 12:00
+    
+    // Test the logic used in notion.ts
+    const jstDateTimeStr = utcDate.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+    const jstDateStr = jstDateTimeStr.split(' ')[0];
+    
+    expect(jstDateStr).toBe('2026-01-23');
+  });
+
+  it('should handle date conversion across day boundaries', () => {
+    // Test with a date that crosses day boundary when converted to JST
+    const utcDate = new Date('2026-01-22T15:30:00.000Z'); // UTC 2026-01-22 15:30 = JST 2026-01-23 00:30
+    
+    const jstDateTimeStr = utcDate.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+    const jstDateStr = jstDateTimeStr.split(' ')[0];
+    
+    expect(jstDateStr).toBe('2026-01-23'); // Should be next day in JST
+  });
+
+  it('should create proper diary title from JST date', () => {
+    const jstDate = '2026-01-23';
+    const [year, month, day] = jstDate.split('-');
+    const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
+    const title = `日記 ${dateStr}`;
+    
+    expect(title).toBe('日記 2026/1/23');
+  });
+});

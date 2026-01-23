@@ -82,9 +82,10 @@ export const appRouter = router({
       }),
 
     /**
-     * Process audio: transcribe and save to Notion
+     * Transcribe audio only (without saving to Notion)
+     * Returns transcribed text, metadata, and formatted content for user review
      */
-    process: protectedProcedure
+    transcribe: protectedProcedure
       .input(z.object({
         recordingId: z.number(),
       }))
@@ -123,33 +124,25 @@ export const appRouter = router({
           // Format text into bullet points using LLM
           const formattedText = await formatTextToBulletPoints(transcribedText);
 
-          // Always create a new entry (no merging)
-          // Convert to JST to get the correct date components
+          // Convert to JST to get the correct date components for title
           const jstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
           const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
           const [year, month, day] = jstDate.split('-');
           const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
           const title = `日記 ${dateStr}`;
-          console.log(`[processRecording] Creating new entry with title: ${title}, date: ${metadata.date.toISOString()}`);
-          const notionResult = await saveToNotion({
-            title,
-            content: formattedText,
-            tags: allTags,
-            date: metadata.date,
-          });
-
-          // Update recording with formatted transcription and Notion info
+          
+          // Update recording with transcribed text (but not Notion info yet)
           await updateRecording(input.recordingId, {
             transcribedText: formattedText,
-            notionPageId: notionResult.pageId,
-            notionPageUrl: notionResult.pageUrl,
-            status: "completed",
+            status: "transcribed", // New status: transcribed but not saved to Notion
           });
 
           return {
             success: true,
+            title,
             transcribedText: formattedText,
-            notionPageUrl: notionResult.pageUrl,
+            tags: allTags,
+            date: metadata.date.toISOString(),
           };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -160,6 +153,60 @@ export const appRouter = router({
           throw new TRPCError({ 
             code: "INTERNAL_SERVER_ERROR", 
             message: `Processing failed: ${errorMessage}` 
+          });
+        }
+      }),
+
+    /**
+     * Save edited diary entry to Notion
+     */
+    saveToNotionDiary: protectedProcedure
+      .input(z.object({
+        recordingId: z.number(),
+        title: z.string(),
+        content: z.string(),
+        tags: z.array(z.string()),
+        date: z.string(), // ISO date string
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const recording = await getRecordingById(input.recordingId);
+        
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Recording not found" });
+        }
+
+        try {
+          // Parse date from ISO string
+          const date = new Date(input.date);
+          
+          // Save to Notion
+          const notionResult = await saveToNotion({
+            title: input.title,
+            content: input.content,
+            tags: input.tags,
+            date,
+          });
+
+          // Update recording with Notion info
+          await updateRecording(input.recordingId, {
+            notionPageId: notionResult.pageId,
+            notionPageUrl: notionResult.pageUrl,
+            status: "completed",
+          });
+
+          return {
+            success: true,
+            notionPageUrl: notionResult.pageUrl,
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          await updateRecording(input.recordingId, {
+            status: "failed",
+            errorMessage,
+          });
+          throw new TRPCError({ 
+            code: "INTERNAL_SERVER_ERROR", 
+            message: `Failed to save to Notion: ${errorMessage}` 
           });
         }
       }),

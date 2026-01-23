@@ -34,7 +34,7 @@ export const recordings = mysqlTable("recordings", {
   audioFileKey: varchar("audioFileKey", { length: 512 }).notNull(),
   audioUrl: text("audioUrl").notNull(),
   duration: int("duration"), // Duration in seconds
-  status: mysqlEnum("status", ["uploading", "processing", "completed", "failed"]).default("uploading").notNull(),
+  status: mysqlEnum("status", ["uploading", "processing", "transcribed", "completed", "failed"]).default("uploading").notNull(),
   transcribedText: text("transcribedText"),
   notionPageId: varchar("notionPageId", { length: 128 }),
   notionPageUrl: text("notionPageUrl"),

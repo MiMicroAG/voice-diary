@@ -211,3 +211,11 @@
 - [x] MCP依存コードを削除（routers.tsからspawnSync呼び出しを削除）
 - [x] テストを実装・実行（server/notion.test.ts、全テスト成功）
 - [x] データベースIDを正しいものに更新
+
+## 機能追加6
+- [x] Notion日付保存をJST（日本標準時）で正確に記録
+- [x] 音声変換後にテキスト編集画面を追加（DiaryEditorコンポーネント）
+- [x] 編集画面でタイトル、本文、タグ、日付を編集可能に
+- [x] 「登録」ボタンでNotionに保存（saveToNotionDiary procedure）
+- [x] 音声入力を省略して直接テキスト入力できる機能を追加
+- [x] テストと検証（13 tests passed）

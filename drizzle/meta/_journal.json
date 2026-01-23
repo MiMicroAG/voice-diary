@@ -15,6 +15,13 @@
       "when": 1769003625106,
       "tag": "0001_robust_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769138837277,
+      "tag": "0002_mysterious_sunfire",
+      "breakpoints": true
     }
   ]
 }

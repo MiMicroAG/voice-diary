@@ -6,6 +6,20 @@
 
 import { ENV } from './_core/env';
 
+/**
+ * Format Date object as JST date string (YYYY-MM-DD)
+ * 
+ * @param date - Date object to format
+ * @returns Date string in YYYY-MM-DD format (JST)
+ */
+function formatDateAsJST(date: Date): string {
+  // Use toLocaleString with 'sv-SE' locale to get YYYY-MM-DD HH:MM:SS format in JST
+  const jstDateTimeStr = date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+  // Extract only the date part (YYYY-MM-DD)
+  const jstDateStr = jstDateTimeStr.split(' ')[0];
+  return jstDateStr;
+}
+
 export type SaveToNotionParams = {
   title: string;
   content: string;
@@ -77,10 +91,12 @@ export async function saveToNotion(params: SaveToNotionParams): Promise<SaveToNo
           multi_select: params.tags.map(tag => ({ name: tag }))
         },
         // Date property
+        // Convert to JST date string (YYYY-MM-DD format)
+        // toISOString() returns UTC, so we need to format as JST explicitly
         "日付": {
           date: {
-            start: params.date.toISOString(),
-            time_zone: "Asia/Tokyo"
+            start: formatDateAsJST(params.date),
+            time_zone: null // Don't specify timezone, let Notion use the date as-is
           }
         }
       }
