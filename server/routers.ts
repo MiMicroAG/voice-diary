@@ -124,17 +124,12 @@ export const appRouter = router({
           // Format text into bullet points using LLM
           const formattedText = await formatTextToBulletPoints(transcribedText);
 
-          // Use extracted date from audio content for title
+          // Use extracted date from audio content for both title and Notion date field
           const titleJstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
           const titleJstDate = titleJstDateStr.split(' ')[0]; // YYYY-MM-DD
           const [titleYear, titleMonth, titleDay] = titleJstDate.split('-');
           const titleDateStr = `${titleYear}/${parseInt(titleMonth)}/${parseInt(titleDay)}`;
           const title = `日記 ${titleDateStr}`;
-          
-          // Always use today's date (JST) for date field (recording date)
-          const now = new Date();
-          const recordingJstDateStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
-          const recordingJstDate = recordingJstDateStr.split(' ')[0]; // YYYY-MM-DD
           
           // Update recording with transcribed text (but not Notion info yet)
           await updateRecording(input.recordingId, {
@@ -147,7 +142,7 @@ export const appRouter = router({
             title,
             transcribedText: formattedText,
             tags: allTags,
-            date: recordingJstDate, // Return today's date (recording date)
+            date: titleJstDate, // Return extracted date from audio content (matches title date)
           };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";

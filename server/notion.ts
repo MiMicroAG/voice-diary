@@ -9,11 +9,16 @@ import { ENV } from './_core/env';
 /**
  * Format Date object as JST date string (YYYY-MM-DD)
  * 
- * @param date - Date object to format
- * @returns Date string in YYYY-MM-DD format (JST)
+ * IMPORTANT: This function extracts the date components from a Date object
+ * that was created with JST timezone (e.g., new Date('2026-01-26T00:00:00+09:00')).
+ * The Date object internally stores UTC timestamp, so we need to extract
+ * the JST date components correctly.
+ * 
+ * @param date - Date object created with JST timezone
+ * @returns Date string in YYYY-MM-DD format
  */
 function formatDateAsJST(date: Date): string {
-  // Use toLocaleString with 'sv-SE' locale to get YYYY-MM-DD HH:MM:SS format in JST
+  // Extract date components using toLocaleString with Asia/Tokyo timezone
   const jstDateTimeStr = date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
   // Extract only the date part (YYYY-MM-DD)
   const jstDateStr = jstDateTimeStr.split(' ')[0];
