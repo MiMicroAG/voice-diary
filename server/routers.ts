@@ -308,14 +308,14 @@ export const appRouter = router({
           
           console.log(`[mergeDuplicates] Found ${entries.length} entries with title: ${title}`);
           
-          // Sort by date (newest first)
-          entries.sort((a: DiaryEntry, b: DiaryEntry) => b.date.localeCompare(a.date));
+          // Sort by date (oldest first) to concatenate in chronological order
+          entries.sort((a: DiaryEntry, b: DiaryEntry) => a.date.localeCompare(b.date));
           
-          // Keep the first (newest) entry as the master
+          // Keep the first (oldest) entry as the master
           const masterEntry = entries[0];
           const duplicateEntries = entries.slice(1);
           
-          // Merge content
+          // Merge content in chronological order (oldest first)
           const mergedContent = [
             masterEntry.content,
             ...duplicateEntries.map(e => e.content)
