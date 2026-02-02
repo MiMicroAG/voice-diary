@@ -287,6 +287,7 @@ export const appRouter = router({
           content: string;
           tags: string[];
           date: string;
+          createdTime: string;
         };
         
         // Group by title
@@ -308,8 +309,8 @@ export const appRouter = router({
           
           console.log(`[mergeDuplicates] Found ${entries.length} entries with title: ${title}`);
           
-          // Sort by date (oldest first) to concatenate in chronological order
-          entries.sort((a: DiaryEntry, b: DiaryEntry) => a.date.localeCompare(b.date));
+          // Sort by created_time (oldest first) to concatenate in chronological order
+          entries.sort((a: DiaryEntry, b: DiaryEntry) => a.createdTime.localeCompare(b.createdTime));
           
           // Keep the first (oldest) entry as the master
           const masterEntry = entries[0];

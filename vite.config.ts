@@ -183,5 +183,19 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    watch: {
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/.manus-logs/**',
+        '**/dist/**',
+        '**/.tsx/**'
+      ],
+      usePolling: false,
+    },
+    hmr: {
+      clientPort: 443,
+      protocol: 'wss',
+    },
   },
 });

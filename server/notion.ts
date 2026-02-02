@@ -226,6 +226,7 @@ export async function queryDiaryEntries(options?: {
   content: string;
   tags: string[];
   date: string; // YYYY-MM-DD
+  createdTime: string; // ISO 8601 timestamp
 }>> {
   const NOTION_API_KEY = process.env.NOTION_API_KEY;
   const DATABASE_ID = "9362df01-b45f-4352-a1a4-2312ed213756";
@@ -334,13 +335,17 @@ export async function queryDiaryEntries(options?: {
         date = jstDateStr;
       }
       
+      // Extract created_time for sorting by actual creation order
+      const createdTime = page.created_time || '';
+      
       return {
         pageId: page.id,
         pageUrl: page.url || `https://www.notion.so/${page.id.replace(/-/g, '')}`,
         title,
         content,
         tags,
-        date
+        date,
+        createdTime
       };
     });
     
