@@ -237,6 +237,44 @@ export const appRouter = router({
           tags: recording.tags ? JSON.parse(recording.tags) : [],
         };
       }),
+
+    /**
+     * Analyze and format text input for diary
+     */
+    analyzeText: protectedProcedure
+      .input(z.object({
+        text: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          // Extract metadata (date and tags) from text
+          const metadata = await extractMetadata(input.text);
+          
+          // Format text into bullet points using LLM
+          const formattedText = await formatTextToBulletPoints(input.text);
+
+          // Use extracted date for both title and Notion date field
+          const titleJstDateStr = metadata.date.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
+          const titleJstDate = titleJstDateStr.split(' ')[0]; // YYYY-MM-DD
+          const [titleYear, titleMonth, titleDay] = titleJstDate.split('-');
+          const titleDateStr = `${titleYear}/${parseInt(titleMonth)}/${parseInt(titleDay)}`;
+          const title = `日記 ${titleDateStr}`;
+          
+          return {
+            success: true,
+            title,
+            content: formattedText,
+            tags: metadata.tags,
+            date: titleJstDate, // YYYY-MM-DD
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          throw new TRPCError({ 
+            code: "INTERNAL_SERVER_ERROR", 
+            message: `Text analysis failed: ${errorMessage}` 
+          });
+        }
+      }),
   }),
 
   /**
@@ -316,11 +354,11 @@ export const appRouter = router({
           const masterEntry = entries[0];
           const duplicateEntries = entries.slice(1);
           
-          // Merge content in chronological order (oldest first)
-          const mergedContent = [
-            masterEntry.content,
-            ...duplicateEntries.map(e => e.content)
-          ].filter(c => c.trim().length > 0).join('\n\n');
+          // Merge content in chronological order (oldest at top, newest at bottom)
+          const mergedContent = entries
+            .map(e => e.content)
+            .filter(c => c.trim().length > 0)
+            .join('\n\n');
           
           // Merge tags (OR operation - union of all tags)
           const allTags = new Set<string>();

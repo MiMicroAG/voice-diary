@@ -5,6 +5,7 @@ import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { DiaryEntries } from "@/components/DiaryEntries";
 import { DiaryEditor, type DiaryData } from "@/components/DiaryEditor";
 import { DiaryCalendar } from "@/components/DiaryCalendar";
+import { TextInputDialog } from "@/components/TextInputDialog";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>("none");
   const [diaryData, setDiaryData] = useState<DiaryData | null>(null);
+  const [showTextInput, setShowTextInput] = useState(false);
 
   const { data: recordings, isLoading: recordingsLoading, refetch } = trpc.recording.list.useQuery(
     undefined,
@@ -27,6 +29,7 @@ export default function Home() {
   const uploadAudioMutation = trpc.recording.uploadAudio.useMutation();
   const transcribeMutation = trpc.recording.transcribe.useMutation();
   const saveToNotionMutation = trpc.recording.saveToNotionDiary.useMutation();
+  const analyzeTextMutation = (trpc.recording as any).analyzeText.useMutation();
 
   const handleRecordingComplete = async (audioBlob: Blob, tags: string[], duration: number) => {
     setIsProcessing(true);
@@ -88,20 +91,30 @@ export default function Home() {
   };
 
   const handleDirectInput = () => {
-    // Create initial data for direct text input
-    const now = new Date();
-    const jstDateStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' });
-    const jstDate = jstDateStr.split(' ')[0]; // YYYY-MM-DD
-    const [year, month, day] = jstDate.split('-');
-    const dateStr = `${year}/${parseInt(month)}/${parseInt(day)}`;
-    
-    setDiaryData({
-      title: `日記 ${dateStr}`,
-      content: "",
-      tags: [],
-      date: jstDate, // Send YYYY-MM-DD string directly
-    });
-    setEditorMode("direct");
+    setShowTextInput(true);
+  };
+  
+  const handleTextSubmit = async (text: string) => {
+    try {
+      toast.info("AIで解析中...");
+      
+      const result = await analyzeTextMutation.mutateAsync({ text });
+      
+      // Show analyzed result in editor for confirmation
+      setDiaryData({
+        title: result.title,
+        content: result.content,
+        tags: result.tags,
+        date: result.date,
+      });
+      setEditorMode("direct");
+      
+      toast.success("解析が完了しました。内容を確認して登録してください。");
+    } catch (error) {
+      console.error("Text analysis failed:", error);
+      toast.error("解析に失敗しました。もう一度お試しください。");
+      throw error;
+    }
   };
 
   const handleSaveDiary = async (data: DiaryData) => {
@@ -385,6 +398,13 @@ export default function Home() {
           </p>
         </div>
       </footer>
+      
+      {/* Text Input Dialog */}
+      <TextInputDialog
+        open={showTextInput}
+        onClose={() => setShowTextInput(false)}
+        onSubmit={handleTextSubmit}
+      />
     </div>
   );
 }

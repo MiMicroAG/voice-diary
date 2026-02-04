@@ -301,3 +301,16 @@
 - [x] queryDiaryEntriesでcreated_timeを返すように追加
 - [x] mergeDuplicatesでcreated_timeでソート（古い順）するように変更
 - [x] ユーザーが手動で修正完了
+
+## バグ修正21
+- [x] マージ順序が逆になっている問題を修正（上が古い、下が新しい順にする）
+- [x] マージロジックを確認し、連結順序を正しく修正
+
+## 機能改善20
+- [x] テキスト直接入力時にAI解析を実行
+- [x] 解析結果を確認画面で表示
+- [x] ユーザーが内容を確認してから登録できるようにする
+- [x] TextInputDialogコンポーネントを作成
+- [x] recording.analyzeTextエンドポイントを追加
+- [x] extractMetadataとformatTextToBulletPoints関数を実装
+- [x] テストで動作確認完了
