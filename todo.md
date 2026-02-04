@@ -314,3 +314,11 @@
 - [x] recording.analyzeTextエンドポイントを追加
 - [x] extractMetadataとformatTextToBulletPoints関数を実装
 - [x] テストで動作確認完了
+
+## バグ修正26
+- [x] 日記登録後にカレンダーが自動的に更新されない問題を修正
+- [x] 日記登録後にtRPCのinvalidateでキャッシュをクリア
+- [x] マージ機能実行後も同様にカレンダーを更新
+- [x] handleSaveDiaryでtrpcUtils.notion.queryDiaries.invalidate()を呼び出し
+- [x] handleMergeDuplicatesでも同様に呼び出し
+- [x] 動作確認とテスト（コードレビュー完了、サーバー問題でブラウザテストは保留）

@@ -152,6 +152,9 @@ export default function Home() {
       setEditorMode("none");
       setDiaryData(null);
       refetch();
+      
+      // Invalidate calendar data to refresh
+      trpcUtils.notion.queryDiaries.invalidate();
     } catch (error) {
       console.error("Save error:", error);
       toast.error("保存に失敗しました", {
@@ -195,8 +198,9 @@ export default function Home() {
         description: `${result.mergedCount}件のタイトルを統合し、${result.deletedCount}件の重複を削除しました`
       });
       
-      // Refresh the recordings list
+      // Refresh the recordings list and calendar data
       refetch();
+      trpcUtils.notion.queryDiaries.invalidate();
       
     } catch (error) {
       console.error("Merge error:", error);
